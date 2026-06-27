@@ -968,3 +968,27 @@ body {
 	cursor: not-allowed;
 	filter: grayscale(100%);
 }
+
+@media (max-width: 640px) {
+    .visual-speaker-picker {
+        display: grid;
+        /* Keep 2 columns */
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+        /* This prevents the grid from stretching the cards to fill the screen width */
+        max-width: 400px; 
+        margin: 0 auto;
+    }
+
+    .speaker-card {
+        /* Forces the square shape */
+        aspect-ratio: 1 / 1;
+        /* Centers the content */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        /* Prevents the card from growing larger than intended */
+        width: 100%;
+    }
+}

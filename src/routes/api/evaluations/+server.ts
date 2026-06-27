@@ -7,25 +7,20 @@ import { eq, inArray } from 'drizzle-orm';
 export const POST = async ({ request }: RequestEvent): Promise<Response> => {
 	try {
 		const body = await request.json();
-		// Extract new fields if present, fallback to old ones if mixed usage
+		
+		// Extract the NEW fields we created in the front-end redesign
 		const {
 			guestId,
 			participantName,
 			trainingTitle,
 			venue,
 			date,
-			resourceSpeaker1,
-			resourceSpeaker2,
-			ratings,
+			speakerEvaluations, // Dynamic array of speaker tabs
+			generalRatings,     // Part II ratings
 			q1,
 			q2,
 			q3,
-			signatureName,
-			// Fallbacks
-			rating: oldRating,
-			course: oldCourse,
-			instructor: oldInstructor,
-			comment: oldComment
+			signatureName
 		} = body;
 
 		// 1. Check if evaluation is open/closed
@@ -70,18 +65,25 @@ export const POST = async ({ request }: RequestEvent): Promise<Response> => {
 			}
 		}
 
-		// Store evaluation directly
-		const ratingsJson = ratings && typeof ratings === 'object' ? JSON.stringify(ratings) : '';
+		// COMBINE ALL RATINGS INTO ONE MASTER JSON OBJECT
+		const masterRatingsPayload = {
+			speakers: speakerEvaluations || [], // Holds an array of { speakerId, speakerName, ratings }
+			general: generalRatings || {}       // Holds { op_ven: '5', op_equ: '4', etc. }
+		};
 
+		const ratingsJson = JSON.stringify(masterRatingsPayload);
+
+		// Store evaluation directly
 		await db.insert(evaluation).values({
 			guestId: guestId || null,
 			participantName: participantName || null,
 			trainingTitle: trainingTitle || null,
 			venue: venue || null,
 			date: date || null,
-			resourceSpeaker1: resourceSpeaker1 || null,
-			resourceSpeaker2: resourceSpeaker2 || null,
-			ratings: ratingsJson,
+			// We pass null to the old columns to eventually phase them out
+			resourceSpeaker1: null, 
+			resourceSpeaker2: null,
+			ratings: ratingsJson, // Save the master JSON here
 			q1: q1 || null,
 			q2: q2 || null,
 			q3: q3 || null,

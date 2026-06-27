@@ -130,9 +130,17 @@
 		}
 	];
 
-	let answeredCount = $derived(Object.keys(ratings).length);
-	let totalItems =
-		speaker1Items.length + speaker2Items.length + serviceItems.length + itemsPart2.length;
+	// Calculate progress dynamically based on how many tabs the user has added
+	let answeredCount = $derived(
+		Object.keys(ratings).length + 
+		tabs.reduce((sum, tab) => sum + Object.keys(tab.ratings).length, 0)
+	);
+
+	// Calculate total items required: Part 2 items + (number of tabs * speaker items)
+	let totalItems = $derived(
+		itemsPart2.length + serviceItems.length + (tabs.length * speakerItems.length)
+	);
+
 	let progressPct = $derived(totalItems ? Math.round((answeredCount / totalItems) * 100) : 0);
 
 	let currentGuestName = $state.raw('Guest');
@@ -194,22 +202,41 @@
 			return;
 		}
 
-		if (Object.keys(ratings).length < totalItems) {
+		// Make sure every tab has a speaker assigned
+		const unassignedTab = tabs.find(t => !t.speakerId);
+		if (unassignedTab) {
+			formMessage = 'Please assign a speaker to every open tab, or close unused tabs.';
+			isSubmitting = false;
+			return;
+		}
+
+		if (answeredCount < totalItems) {
 			formMessage = 'Please answer all rating items (1–5).';
 			isSubmitting = false;
 			return;
 		}
 
 		try {
+			// 1. Extract and format the dynamic speaker tabs
+			const speakerEvaluations = tabs.map(tab => {
+				const speakerDetails = availableSpeakers.find(s => s.id === tab.speakerId);
+				return {
+					speakerId: tab.speakerId,
+					speakerName: speakerDetails ? speakerDetails.name : 'Unknown',
+					ratings: tab.ratings
+				};
+			});
+
+			// 2. Build the payload. 
+			// 'ratings' here automatically contains both serviceItems and itemsPart2!
 			const data = {
 				guestId,
 				participantName,
 				trainingTitle,
 				venue,
 				date,
-				resourceSpeaker1,
-				resourceSpeaker2,
-				ratings: ratings,
+				speakerEvaluations, // Sends the extracted tabs
+				generalRatings: ratings, // Sends Part 2 AND Service ratings
 				q1,
 				q2,
 				q3,
@@ -452,31 +479,31 @@
 							{/if}
 
 							<div class="visual-picker-container">
-								<label class="picker-label">
-									{activeSpeakerDetails ? 'Change assigned speaker' : 'Select a speaker to evaluate'}
-								</label>
-								
-								<div class="visual-speaker-picker">
-									{#each availableSpeakers as speaker}
-										{@const isSelected = activeTab.speakerId === speaker.id}
-										{@const isAssignedElsewhere = tabs.some(t => t.speakerId === speaker.id && t.id !== activeTab.id)}
+							<label class="picker-label">
+								{activeSpeakerDetails ? 'Change assigned speaker' : 'Select a speaker to evaluate'}
+							</label>
+							
+							<div class="visual-speaker-picker">
+								{#each availableSpeakers as speaker}
+									{@const isSelected = activeTab.speakerId === speaker.id}
+									{@const isAssignedElsewhere = tabs.some(t => t.speakerId === speaker.id && t.id !== activeTab.id)}
+									
+									<button
+										class="speaker-card {isSelected ? 'selected' : ''} {isAssignedElsewhere ? 'disabled' : ''}"
+										disabled={isAssignedElsewhere}
+										onclick={(e) => { e.preventDefault(); activeTab.speakerId = speaker.id; }}
+										aria-pressed={isSelected}
+									>
+										<img src={speaker.imageUrl} alt={speaker.name} class="picker-avatar" />
+										<span class="picker-name">{speaker.name}</span>
 										
-										<button
-											class="speaker-card {isSelected ? 'selected' : ''} {isAssignedElsewhere ? 'disabled' : ''}"
-											disabled={isAssignedElsewhere}
-											onclick={(e) => { e.preventDefault(); activeTab.speakerId = speaker.id; }}
-											aria-pressed={isSelected}
-										>
-											<img src={speaker.imageUrl} alt={speaker.name} class="picker-avatar" />
-											<span class="picker-name">{speaker.name}</span>
-											
-											{#if isSelected}
-												<div class="selected-badge">✓</div>
-											{/if}
-										</button>
-									{/each}
-								</div>
+										{#if isSelected}
+											<div class="selected-badge">✓</div>
+										{/if}
+									</button>
+								{/each}
 							</div>
+						</div>
 						</div>
 
 						<!-- Evaluation Matrix -->
@@ -510,6 +537,33 @@
 					</div>
 				{/if}
 			</div>
+				<h4 class="form-subtitle" style="margin-top: 2rem; margin-bottom: 1rem; font-weight: 600;">
+					Quality & Timeliness of Service
+				</h4>
+				<div class="matrix">
+					{#each serviceItems as item}
+						<div class="matrix-row">
+							<div class="matrix-label">
+								<span class="label-primary">{item.label}</span>
+								<span class="label-secondary">{item.sub}</span>
+							</div>
+							<div class="rating-group">
+								{#each [1, 2, 3, 4, 5] as v}
+									<label class="rating-pill">
+										<input
+											type="radio"
+											name={item.key}
+											value={String(v)}
+											bind:group={ratings[item.key]}
+											required
+										/>
+										{v}
+									</label>
+								{/each}
+							</div>
+						</div>
+					{/each}
+				</div>
 			</section>
 
 			<section class="form-section">
@@ -518,8 +572,8 @@
 					{#each itemsPart2 as item}
 						<div class="matrix-row">
 							<div class="matrix-label">
-								{item.label}
-								<small>{item.sub}</small>
+								<span class="label-primary">{item.label}</span>
+								<span class="label-secondary">{item.sub}</span>
 							</div>
 							<div class="rating-group">
 								{#each [1, 2, 3, 4, 5] as v}

@@ -45,10 +45,6 @@ export const evaluation = mysqlTable('evaluation', {
 	venue: varchar('venue', { length: 255 }),
 	date: varchar('date', { length: 50 }), // keeping as string for simplicity or validation
 
-	// Resource Speakers
-	resourceSpeaker1: varchar('resource_speaker1', { length: 255 }),
-	resourceSpeaker2: varchar('resource_speaker2', { length: 255 }),
-
 	// Ratings (Stored as JSON for flexibility, or we could map every single question)
 	// Example: {"rs1_obj": "5", "rs1_rel": "4", ...}
 	ratings: text('ratings'),
