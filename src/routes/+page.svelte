@@ -12,6 +12,25 @@
 
 	let attendanceData: any = $state({});
 
+	let isEvalOpen = $state(false);
+	let evalMessage = $state('Checking evaluation schedule...');
+
+	onMount(async () => {
+		try {
+			const res = await fetch('/api/evaluations/status');
+			if (res.ok) {
+				const data = await res.json();
+				isEvalOpen = data.isOpen;
+				evalMessage = data.message;
+			} else {
+				evalMessage = 'Evaluation schedule unavailable.';
+			}
+		} catch (error) {
+			console.error("Failed to load schedule:", error);
+			evalMessage = 'Network error checking schedule.';
+		}
+	});
+
 	// State for modal
 	let showModal = $state(false);
 	let modalTitle = $state('');
@@ -120,6 +139,10 @@
 	}
 
 	function proceedToEvaluation() {
+		if (!isEvalOpen) {
+			showModalDialog('Evaluation Closed', evalMessage, '🕒', 'info');
+			return;
+		}
 		currentSection = 'evaluation';
 	}
 
@@ -165,7 +188,7 @@
 				<img src="/assets/logo_cnsc.png" alt="CNSC Logo" />
 			</div>
 			<div class="logo-box">
-				<img src="/assets/ccms_logo.jpg" alt="CCMS Logo" style="border-radius: 50%;" />
+				<img src="/assets/ccms_logo.png" alt="CCMS Logo" />
 			</div>
 		</div>
 
@@ -190,7 +213,9 @@
 
 				<p class="subtitle" style="text-align: center;">
 					Click PROCEED to register attendance or complete your evaluation.<br />
-					Evaluation is only available from 5:00 PM to 6:00 PM.
+					<strong style="color: {isEvalOpen ? 'var(--accent-green)' : 'var(--accent-color)'};">
+						{evalMessage}
+					</strong>
 				</p>
 			</div>
 		</main>

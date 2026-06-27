@@ -2,79 +2,87 @@ import { json } from '@sveltejs/kit';
 import type { RequestEvent } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { guest } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
+import { like, or, eq } from 'drizzle-orm';
 
-export const GET = async (): Promise<Response> => {
+export const GET = async ({ url }) => {
 	try {
-		const guests = await db.select().from(guest);
-		return json(guests);
-	} catch (e: any) {
-		console.error(e);
-		return json({ error: 'Failed to fetch guests' }, { status: 500 });
+		const searchQuery = url.searchParams.get('q');
+		const fetchAll = url.searchParams.get('all') === 'true';
+		
+		// THE ADMIN BYPASS: If the URL has ?all=true, return everyone
+		if (fetchAll) {
+			const allGuests = await db.select().from(guest);
+			return json(allGuests);
+		}
+		
+		// THE PUBLIC ATTENDANCE GATE: If there is no search query, return nothing
+		if (!searchQuery) {
+			return json([]);
+		}
+		
+		// THE SEARCH ENGINE
+		const searchPattern = `%${searchQuery}%`;
+		const results = await db
+		.select()
+		.from(guest)
+		.where(
+			or(
+				like(guest.firstName, searchPattern),
+				like(guest.lastName, searchPattern),
+				like(guest.guestId, searchPattern)
+			)
+		)
+		.limit(5);
+
+		return json(results);
+	} catch (error) {
+		console.error("Guest search error:", error);
+		return json({ error: 'Failed to search/fetch guests' }, { status: 500 });
 	}
 };
 
 export const POST = async ({ request }: RequestEvent): Promise<Response> => {
 	try {
+		const body = await request.json();
+		
+		// Only extract the fields that still exist in your updated schema
 		const {
-			title,
 			firstName,
-			middleName,
 			lastName,
-			suffix,
-			sex,
-			age,
-			employmentStatus,
-			socialClassification,
 			company,
-			address,
 			email
-		} = await request.json();
+		} = body;
 
+		if (!firstName || !lastName) {
+			return json({ error: 'First and Last name are required.' }, { status: 400 });
+		}
+
+		// Generate a unique ID for the guest
 		const guestId = crypto.randomUUID();
-		// Ensure types are correct for DB
-		const ageInt = parseInt(age);
-		// If socialClassification is array, stringify it, else just string
-		const scValue = Array.isArray(socialClassification)
-			? JSON.stringify(socialClassification)
-			: String(socialClassification || '');
 
 		const [result] = await db.insert(guest).values({
 			guestId,
-			title,
-			firstName,
-			middleName,
-			lastName,
-			suffix,
-			sex,
-			age: isNaN(ageInt) ? null : ageInt,
-			employmentStatus,
-			socialClassification: scValue,
-			company,
-			address,
-			email
+			firstName: firstName.trim(),
+			lastName: lastName.trim(),
+			company: company ? company.trim() : null,
+			email: email ? email.trim() : null
 		});
 
-		// Return the new guest so the frontend can add it to the list
-		// We return the raw input values (or close to it) to match what frontend expects
+		// Return the new guest in the structure expected by the frontend
 		const newGuest = {
 			id: result.insertId,
 			guestId,
-			title,
 			firstName,
-			middleName,
 			lastName,
-			suffix,
-			sex,
-			age: isNaN(ageInt) ? null : ageInt,
-			employmentStatus,
-			socialClassification: Array.isArray(socialClassification) ? socialClassification : [], // Return as array for frontend consistency if they expect it
 			company,
-			address,
 			email
 		};
 
-		return json(newGuest);
+		// Returning an object with "success: true" safely supports the Walk-In flow
+		return json({
+			success: true,
+			guest: newGuest
+		});
 	} catch (e: any) {
 		console.error(e);
 		return json({ error: 'Failed to add guest: ' + e.message }, { status: 500 });

@@ -15,11 +15,7 @@ export const GET = async (): Promise<Response> => {
 				firstName: guest.firstName,
 				lastName: guest.lastName,
 				company: guest.company,
-				email: guest.email,
-				sex: guest.sex,
-				age: guest.age,
-				employmentStatus: guest.employmentStatus,
-				socialClassification: guest.socialClassification
+				email: guest.email
 			})
 			.from(attendance)
 			.leftJoin(guest, eq(attendance.guestId, guest.guestId))

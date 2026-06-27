@@ -147,6 +147,7 @@
 		opacity: 0;
 		transform: translateY(10px);
 	}
+
 	to {
 		opacity: 1;
 		transform: translateY(0);
@@ -219,7 +220,7 @@
 	box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
 }
 
-.table-wrapper h3{
+.table-wrapper h3 {
 	margin: 1em;
 }
 
@@ -350,8 +351,13 @@
 }
 
 @keyframes fadeInOverlay {
-	from { opacity: 0; }
-	to { opacity: 1; }
+	from {
+		opacity: 0;
+	}
+
+	to {
+		opacity: 1;
+	}
 }
 
 .modal-dialog {
@@ -393,6 +399,7 @@
 	padding: 0.5rem;
 	border-radius: 50%;
 }
+
 .modal-dialog .btn-ghost:hover {
 	background: rgba(239, 68, 68, 0.1);
 	color: var(--admin-danger);
@@ -402,29 +409,34 @@
 .admin-section-header {
 	display: flex;
 	justify-content: space-between;
-	align-items: flex-start; /* Aligns the "Registered Guests" title to the top */
+	align-items: flex-start;
+	/* Aligns the "Registered Guests" title to the top */
 	margin-bottom: 1.5rem;
 	gap: 1rem;
 }
 
 .admin-section-header h2 {
-	margin-top: 0.25rem; /* Slight nudge to align visually with the search box */
+	margin-top: 0.25rem;
+	/* Slight nudge to align visually with the search box */
 }
 
 .admin-actions {
 	display: flex;
 	flex-wrap: wrap;
-	justify-content: flex-end; /* Aligns everything inside to the right */
+	justify-content: flex-end;
+	/* Aligns everything inside to the right */
 	flex-direction: column;
 	gap: 0.75rem;
 	flex: 1;
-	max-width: 500px; /* Controls how wide the search bar gets on huge monitors */
+	max-width: 500px;
+	/* Controls how wide the search bar gets on huge monitors */
 }
 
 .admin-actions div {
 	display: flex;
 	flex-wrap: wrap;
-	justify-content: flex-end; /* Aligns everything inside to the right */
+	justify-content: flex-end;
+	/* Aligns everything inside to the right */
 	flex-direction: row;
 	gap: 0.75rem;
 }
@@ -441,7 +453,8 @@
 	color: #000000;
 	border: none;
 	padding: 0.6rem 1.25rem;
-	border-radius: 50px; /* Matches the search bar pill-shape */
+	border-radius: 50px;
+	/* Matches the search bar pill-shape */
 	font-weight: 700;
 	font-size: 0.9rem;
 	cursor: pointer;
@@ -469,7 +482,7 @@
 	color: var(--admin-text);
 	border: 1px solid var(--admin-border);
 	padding: 0.6rem 1.25rem;
-	border-radius: 50px; 
+	border-radius: 50px;
 	font-weight: 600;
 	font-size: 0.9rem;
 	cursor: pointer;
@@ -485,4 +498,60 @@
 .btn-secondary:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
+}
+
+/* Grouping and Grid Layout */
+.settings-group {
+	background: rgba(15, 23, 42, 0.2);
+	border: 1px solid rgba(148, 163, 184, 0.1);
+	border-radius: 12px;
+	padding: 1.5rem;
+}
+
+.group-header {
+	margin-bottom: 1.5rem;
+}
+
+.group-header h3 {
+	margin: 0 0 0.25rem 0;
+	color: var(--text-main);
+}
+
+.datetime-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 1.5rem;
+}
+
+/* Responsive fallback for smaller screens */
+@media (max-width: 600px) {
+	.datetime-grid {
+		grid-template-columns: 1fr;
+		gap: 1rem;
+	}
+}
+
+/* The Invisible Overlay Hack */
+.datetime-wrapper {
+	position: relative;
+	width: 100%;
+}
+
+.clickable-datetime {
+	width: 100%;
+	cursor: pointer;
+	/* Suggests interactivity */
+	position: relative;
+}
+
+/* Stretch the calendar icon over the entire input field */
+.clickable-datetime::-webkit-calendar-picker-indicator {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	opacity: 0;
+	/* Keep it invisible */
+	cursor: pointer;
 }

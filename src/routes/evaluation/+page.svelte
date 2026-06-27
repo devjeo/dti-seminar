@@ -16,10 +16,8 @@
 	let trainingTitle = $state.raw(
 		'Empowering Collaboration, Active Participation, and Professional Engagement Through Digital Tools'
 	);
-	let venue = $state.raw('CCMS Lab 2, CNSC, Daet Camarines Norte');
+	let venue = $state.raw('CCMS Lab 2, UCN, Daet, Camarines Norte');
 	let date = $state.raw(new Date().toISOString().split('T')[0]);
-	let resourceSpeaker1 = $state.raw('');
-	let resourceSpeaker2 = $state.raw('');
 	let ratings: Record<string, string> = $state({});
 	let q1 = $state.raw('');
 	let q2 = $state.raw('');
@@ -156,7 +154,7 @@
 
 		try {
 			// Fetch guest details
-			const guestsRes = await fetch('/api/guests');
+			const guestsRes = await fetch(`/api/guests?q=${encodeURIComponent(guestId)}`);
 			if (guestsRes.ok) {
 				const guests = await guestsRes.json();
 				const s = guests.find((g: any) => g.guestId === guestId);
@@ -272,9 +270,8 @@
 
 	// Expanded mock database with image URLs
 	const availableSpeakers = [
-		{ id: 's1', name: 'John Doe', imageUrl: 'https://i.pravatar.cc/150?u=s1' },
-		{ id: 's2', name: 'Jane Smith', imageUrl: 'https://i.pravatar.cc/150?u=s2' },
-		{ id: 's3', name: 'Dr. Alan Turing', imageUrl: 'https://i.pravatar.cc/150?u=s3' }
+		{ id: 's1', name: 'Prince Villacrusis', imageUrl: '/assets/speaker1.png' },
+		{ id: 's2', name: 'Jonelle Dela Torre', imageUrl: '/assets/speaker2.png' },
 	];
 
 	type SpeakerTab = {
@@ -427,11 +424,13 @@
 					<label for="date">Date</label>
 					<input id="date" bind:value={date} type="date" required readonly />
 				</div>
-				<p class="note">
-					Rating guide: <strong>5</strong> Excellent, <strong>4</strong> Very good,
-					<strong>3</strong>
-					Good,
-					<strong>2</strong> Fair, <strong>1</strong> Poor.
+				<p class="note" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+					<span class="muted">Rating guide:</span>
+					<span><strong>1</strong> Poor &middot;</span>
+					<span><strong>2</strong> Fair &middot;</span>
+					<span><strong>3</strong> Good &middot;</span>
+					<span><strong>4</strong> Very good &middot;</span>
+					<span><strong>5</strong> Excellent</span>
 				</p>
 			</section>
 
@@ -458,9 +457,12 @@
 							{/if}
 						</button>
 					{/each}
-					<button class="add-tab-btn" onclick={(e) => { e.preventDefault(); addSpeakerTab(); }}>
-						+ Add Speaker
-					</button>
+					
+					{#if tabs.length < availableSpeakers.length}
+						<button class="add-tab-btn" onclick={(e) => { e.preventDefault(); addSpeakerTab(); }}>
+							+ Add Speaker
+						</button>
+					{/if}
 				</div>
 
 				<!-- ACTIVE TAB CONTENT -->
@@ -468,16 +470,6 @@
 					<div class="tab-content">
 						
 						<div class="speaker-selection-area">
-							{#if activeSpeakerDetails}
-								<div class="speaker-avatar-card">
-									<img src={activeSpeakerDetails.imageUrl} alt={activeSpeakerDetails.name} class="avatar-large" />
-									<div class="speaker-info">
-										<strong class="speaker-name-large">{activeSpeakerDetails.name}</strong>
-										<span class="muted">Resource Speaker</span>
-									</div>
-								</div>
-							{/if}
-
 							<div class="visual-picker-container">
 							<label class="picker-label">
 								{activeSpeakerDetails ? 'Change assigned speaker' : 'Select a speaker to evaluate'}
@@ -549,7 +541,7 @@
 							</div>
 							<div class="rating-group">
 								{#each [1, 2, 3, 4, 5] as v}
-									<label class="rating-pill">
+									<label class="rating-pill rating-val-{v}">
 										<input
 											type="radio"
 											name={item.key}

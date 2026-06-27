@@ -35,72 +35,37 @@
 
 	let isAddingGuest = $state(false);
 	let guestForm = $state({
-		title: '',
 		firstName: '',
-		middleName: '',
 		lastName: '',
-		suffix: '',
-		sex: '',
-		age: '',
-		employmentStatus: '',
-		socialClassification: [] as string[],
 		company: '',
-		address: '',
 		email: ''
 	});
 	let guestFormMessage = $state('');
 
-	const SURVEY_CRITERIA = [
-		{ key: 'rs1_obj', label: '1.A Resource Speaker 1: Achievement of session objectives' },
-		{ key: 'rs1_rel', label: '1.A Resource Speaker 1: Relevance of topic covered' },
-		{ key: 'rs1_mas', label: '1.A Resource Speaker 1: Mastery of the subject matter' },
-		{ key: 'rs1_app', label: '1.A Resource Speaker 1: Appropriateness' },
-		{ key: 'rs1_int', label: '1.A Resource Speaker 1: Opportunity for interactive participation' },
-		{ key: 'rs1_pre', label: '1.A Resource Speaker 1: Presentation skills' },
-		{ key: 'rs1_tim', label: '1.A Resource Speaker 1: Time management' },
+	const SPEAKER_CRITERIA = [
+		{ key: 'obj', label: '1. Resource Speakers: Achievement of session objectives' },
+		{ key: 'rel', label: '1. Resource Speakers: Relevance of topic covered' },
+		{ key: 'mas', label: '1. Resource Speakers: Mastery of the subject matter' },
+		{ key: 'app', label: '1. Resource Speakers: Appropriateness' },
+		{ key: 'int', label: '1. Resource Speakers: Opportunity for interactive participation' },
+		{ key: 'pre', label: '1. Resource Speakers: Presentation skills' },
+		{ key: 'tim', label: '1. Resource Speakers: Time management' }
+	];
 
-		{ key: 'rs2_obj', label: '1.B Resource Speaker 2: Achievement of session objectives' },
-		{ key: 'rs2_rel', label: '1.B Resource Speaker 2: Relevance of topic covered' },
-		{ key: 'rs2_mas', label: '1.B Resource Speaker 2: Mastery of the subject matter' },
-		{ key: 'rs2_app', label: '1.B Resource Speaker 2: Appropriateness' },
-		{ key: 'rs2_int', label: '1.B Resource Speaker 2: Opportunity for interactive participation' },
-		{ key: 'rs2_pre', label: '1.B Resource Speaker 2: Presentation skills' },
-		{ key: 'rs2_tim', label: '1.B Resource Speaker 2: Time management' },
-
+	const GENERAL_CRITERIA = [
 		{ key: 'qos_obj', label: '2. Quality of Service: Achievement of the training objectives' },
-		{
-			key: 'qos_use',
-			label: '2. Quality of Service: Usefulness of the training to your needs/work'
-		},
-		{
-			key: 'qos_con',
-			label: '2. Quality of Service: Contribution of the training to community development'
-		},
-		{
-			key: 'qos_cap',
-			label: '2. Quality of Service: Capability of CNSC in conducting the training'
-		},
-
-		{
-			key: 'tim_rel',
-			label:
-				'3. Timeliness of Service: Timeliness and relevance to improving current job/operations'
-		},
-		{
-			key: 'tim_len',
-			label: '3. Timeliness of Service: Length of the presentation was sufficient'
-		},
-
+		{ key: 'qos_use', label: '2. Quality of Service: Usefulness of the training to your needs/work' },
+		{ key: 'qos_con', label: '2. Quality of Service: Contribution of the training to community development' },
+		{ key: 'qos_cap', label: '2. Quality of Service: Capability of CNSC in conducting the training' },
+		{ key: 'tim_rel', label: '3. Timeliness of Service: Timeliness and relevance to improving current job/operations' },
+		{ key: 'tim_len', label: '3. Timeliness of Service: Length of the presentation was sufficient' },
 		{ key: 'op_ven', label: '4. Other Particulars: Venue and related facilities' },
 		{ key: 'op_equ', label: '4. Other Particulars: Tools and Equipment' },
 		{ key: 'op_ref', label: '4. Other Particulars: Refreshments/food' },
 		{ key: 'op_spe', label: '4. Other Particulars: Event/program speakers/facilitators' },
 		{ key: 'op_act', label: '4. Other Particulars: Activities at the event' },
 		{ key: 'op_obj', label: '4. Other Particulars: Achievement of the Objective/s' },
-		{
-			key: 'op_cap',
-			label: '4. Other Particulars: Capability of CNSC to operationalize the activity'
-		},
+		{ key: 'op_cap', label: '4. Other Particulars: Capability of CNSC to operationalize the activity' },
 		{ key: 'op_ovr', label: '5. OVERALL QUALITY: Overall Quality of the Service Provided' }
 	];
 
@@ -162,27 +127,53 @@
 		)
 	);
 
-	let summaryData = $derived(
-		SURVEY_CRITERIA.map((c) => {
+	let summaryData = $derived.by(() => {
+		const allCriteria = [...SPEAKER_CRITERIA, ...GENERAL_CRITERIA];
+
+		return allCriteria.map((c) => {
 			const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
 			let n = 0;
 			let sum = 0;
 
 			filteredEvaluations.forEach((e) => {
-				// Access ratings from JSON object if parsed, or fallback
-				const v = e.ratings ? e.ratings[c.key] : null;
-				const num = Number(v);
-				if ([1, 2, 3, 4, 5].includes(num)) {
-					counts[num] += 1;
-					n += 1;
-					sum += num;
+				const payload = e.ratings || {};
+
+				if (SPEAKER_CRITERIA.includes(c)) {
+					// Parse dynamic speakers array
+					if (Array.isArray(payload.speakers)) {
+						payload.speakers.forEach((speaker: any) => {
+							const v = speaker.ratings ? speaker.ratings[c.key] : null;
+							const num = Number(v);
+							if ([1, 2, 3, 4, 5].includes(num)) {
+								counts[num] += 1;
+								n += 1;
+								sum += num;
+							}
+						});
+					} 
+					// Fallback for legacy data (if any old DB rows survived)
+					else {
+						const v1 = Number(payload[`rs1_${c.key}`]);
+						const v2 = Number(payload[`rs2_${c.key}`]);
+						if ([1, 2, 3, 4, 5].includes(v1)) { counts[v1]++; n++; sum += v1; }
+						if ([1, 2, 3, 4, 5].includes(v2)) { counts[v2]++; n++; sum += v2; }
+					}
+				} else {
+					// Parse general criteria
+					const v = payload.general ? payload.general[c.key] : payload[c.key];
+					const num = Number(v);
+					if ([1, 2, 3, 4, 5].includes(num)) {
+						counts[num] += 1;
+						n += 1;
+						sum += num;
+					}
 				}
 			});
 
 			const wm = n ? (sum / n).toFixed(2) : '—';
 			return { label: c.label, counts, wm, n };
-		})
-	);
+		});
+	});
 
 	onMount(() => {
 		isLoggedIn = localStorage.getItem('adminLoggedIn') === '1';
@@ -230,7 +221,7 @@
 				fetch('/api/attendance'),
 				fetch('/api/evaluations'),
 				fetch('/api/settings'),
-				fetch('/api/guests')
+				fetch('/api/guests?all=true')
 			]);
 
 			if (attRes.ok) attendanceData = await attRes.json();
@@ -339,10 +330,6 @@
 				'First Name',
 				'Last Name',
 				'Company',
-				'Sex',
-				'Age',
-				'Employment',
-				'Classifications',
 				'Email'
 			];
 			const rows = filteredGuests.map((r) => [
@@ -350,10 +337,6 @@
 				`"${r.firstName}"`,
 				`"${r.lastName}"`,
 				`"${r.company}"`,
-				`"${r.sex}"`,
-				`"${r.age}"`,
-				`"${r.employmentStatus}"`,
-				`"${Array.isArray(r.socialClassification) ? r.socialClassification.join('; ') : r.socialClassification || ''}"`,
 				`"${r.email}"`
 			]);
 			csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
@@ -382,34 +365,76 @@
 			csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
 			filename = `attendance-${Date.now()}.csv`;
 		} else if (type === 'evaluations') {
-			const headers = [
+			// 1. Set a maximum number of speakers to export columns for. 
+			// (3 is usually safe, but you can increase it if needed)
+			const maxSpeakersToExport = 3; 
+
+			// 2. Build the flattened headers
+			let headers = [
 				'Guest ID',
-				'Name',
-				'Training',
+				'Participant Name',
+				'Training Title',
 				'Venue',
-				'Date',
-				'Resource Speaker 1',
-				'Resource Speaker 2',
-				'Q1 (Learn)',
-				'Q2 (Improve)',
-				'Q3 (Comments)',
-				'Ratings (JSON)'
+				'Date Submitted'
 			];
-			const rows = filteredEvaluations.map((r) => [
-				`"${r.guestId || ''}"`,
-				`"${r.participantName || ''}"`,
-				`"${r.trainingTitle || ''}"`,
-				`"${r.venue || ''}"`,
-				`"${formatTime(r.date || r.submittedAt || r.createdAt)}"`,
-				`"${r.resourceSpeaker1 || ''}"`,
-				`"${r.resourceSpeaker2 || ''}"`,
-				`"${(r.q1 || '').replace(/"/g, '""')}"`,
-				`"${(r.q2 || '').replace(/"/g, '""')}"`,
-				`"${(r.q3 || '').replace(/"/g, '""')}"`,
-				`"${JSON.stringify(r.ratings || {}).replace(/"/g, '""')}"`
-			]);
+
+			// Add General Criteria headers
+			GENERAL_CRITERIA.forEach(c => headers.push(`"${c.label}"`));
+
+			// Add Speaker Criteria headers (Spk 1 Name, Spk 1 Mastery, Spk 2 Name, etc.)
+			for (let i = 0; i < maxSpeakersToExport; i++) {
+				headers.push(`"Speaker ${i + 1} Name"`);
+				SPEAKER_CRITERIA.forEach(c => {
+					// We split the label to remove the "1. Resource Speakers: " prefix to save space in Excel
+					const cleanLabel = c.label.split(': ')[1] || c.label; 
+					headers.push(`"Speaker ${i + 1} - ${cleanLabel}"`);
+				});
+			}
+
+			headers.push('"Q1 (Learn)"', '"Q2 (Improve)"', '"Q3 (Comments)"');
+
+			// 3. Build the flattened rows
+			const rows = filteredEvaluations.map((r) => {
+				const payload = r.ratings || {};
+				const general = payload.general || payload; // fallback for older entries
+				const speakers = Array.isArray(payload.speakers) ? payload.speakers : [];
+
+				let rowData = [
+					`"${r.guestId || ''}"`,
+					`"${r.participantName || ''}"`,
+					`"${r.trainingTitle || ''}"`,
+					`"${r.venue || ''}"`,
+					`"${formatTime(r.date || r.submittedAt || r.createdAt)}"`
+				];
+
+				// Add General Scores
+				GENERAL_CRITERIA.forEach(c => {
+					rowData.push(`"${general[c.key] || ''}"`);
+				});
+
+				// Add Speaker Scores
+				for (let i = 0; i < maxSpeakersToExport; i++) {
+					const spk = speakers[i] || {};
+					const spkRatings = spk.ratings || {};
+					
+					rowData.push(`"${spk.speakerName || ''}"`);
+					SPEAKER_CRITERIA.forEach(c => {
+						rowData.push(`"${spkRatings[c.key] || ''}"`);
+					});
+				}
+
+				// Add text feedback
+				rowData.push(
+					`"${(r.q1 || '').replace(/"/g, '""')}"`,
+					`"${(r.q2 || '').replace(/"/g, '""')}"`,
+					`"${(r.q3 || '').replace(/"/g, '""')}"`
+				);
+
+				return rowData;
+			});
+
 			csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-			filename = `evaluations-${Date.now()}.csv`;
+			filename = `evaluations-tabulated-${Date.now()}.csv`;
 		} else if (type === 'summary') {
 			const headers = [
 				'Criteria',
@@ -449,7 +474,7 @@
 		guestFormMessage = 'Registering...';
 
 		try {
-			const res = await fetch('/api/guests', {
+			const res = await fetch('/api/guests?all=true', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(guestForm)
@@ -464,17 +489,9 @@
 				isAddingGuest = false;
 				// Reset form
 				guestForm = {
-					title: '',
 					firstName: '',
-					middleName: '',
 					lastName: '',
-					suffix: '',
-					sex: '',
-					age: '',
-					employmentStatus: '',
-					socialClassification: [],
 					company: '',
-					address: '',
 					email: ''
 				};
 				calculateStats();
@@ -567,15 +584,8 @@
 			const guestData = {
 				firstName: String(values[0] || '').trim(),
 				lastName: String(values[1] || '').trim(),
-				middleName: String(values[2] || '').trim(),
-				suffix: String(values[3] || '').trim(),
-				sex: String(values[4] || '').trim(),
-				age: String(values[5] || '').trim(),
-				employmentStatus: String(values[6] || '').trim(),
-				socialClassification: values[7] ? String(values[7]).split(';').map(s => s.trim()) : [],
-				company: String(values[8] || '').trim(),
-				address: String(values[9] || '').trim(),
-				email: String(values[10] || '').trim()
+				company: String(values[2] || '').trim(),
+				email: String(values[3] || '').trim()
 			};
 
 			validGuests.push(guestData);
@@ -586,7 +596,7 @@
 
 		for (const guest of validGuests) {
 			try {
-				const res = await fetch('/api/guests', {
+				const res = await fetch('/api/guests?all=true', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify(guest)
@@ -753,10 +763,7 @@
 												<td>{r.firstName} {r.lastName}</td>
 												<td>{formatTime(r.timeIn || r.createdAt)}</td>
 												<td>
-													{r.company}
-													{#if r.employmentStatus}
-														<br /><small class="muted">{r.employmentStatus}</small>
-													{/if}
+													{r.company || 'NA'}
 												</td>
 												<td>
 													<button
@@ -823,98 +830,25 @@
 							<div class="admin-card">
 								<h3>Register New Guest</h3>
 								<form class="form" onsubmit={handleRegisterGuest}>
-									<div
-										class="grid"
-										style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;"
-									>
+									<div class="grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
 										<div class="field">
-											<label for="reg-firstName">First Name</label>
+											<label for="reg-firstName">First Name *</label>
 											<input id="reg-firstName" bind:value={guestForm.firstName} required />
 										</div>
 										<div class="field">
-											<label for="reg-lastName">Last Name</label>
+											<label for="reg-lastName">Last Name *</label>
 											<input id="reg-lastName" bind:value={guestForm.lastName} required />
-										</div>
-									</div>
-									<div
-										class="grid"
-										style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;"
-									>
-										<div class="field">
-											<label for="reg-middleName">Middle Name</label>
-											<input id="reg-middleName" bind:value={guestForm.middleName} />
-										</div>
-										<div class="field">
-											<label for="reg-suffix">Suffix</label>
-											<input id="reg-suffix" bind:value={guestForm.suffix} style="width: 80px;" />
-										</div>
-									</div>
-
-									<div
-										class="grid"
-										style="display: grid; grid-template-columns: 100px 100px 1fr; gap: 1rem;"
-									>
-										<div class="field">
-											<label for="reg-sex">Sex</label>
-											<select id="reg-sex" bind:value={guestForm.sex} required>
-												<option value="">Select</option>
-												<option value="M">Male</option>
-												<option value="F">Female</option>
-											</select>
-										</div>
-										<div class="field">
-											<label for="reg-age">Age</label>
-											<input
-												id="reg-age"
-												type="number"
-												bind:value={guestForm.age}
-												required
-												style="width: 80px;"
-											/>
-										</div>
-										<div class="field">
-											<label for="reg-employment">Employment Status</label>
-											<select id="reg-employment" bind:value={guestForm.employmentStatus} required>
-												<option value="">Select</option>
-												<option value="Private">Private</option>
-												<option value="Gov't">Government</option>
-												<option value="Self-Employed">Self-Employed</option>
-												<option value="None">None (Student/Unemployed)</option>
-											</select>
-										</div>
-									</div>
-
-									<div class="field">
-										<label>Social Classification (Check all that apply)</label>
-										<div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-											{#each ['PWD', '4Ps', 'Youth', 'Senior Citizen', 'IP', 'OFW'] as sc}
-												<label
-													style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal;"
-												>
-													<input
-														type="checkbox"
-														bind:group={guestForm.socialClassification}
-														value={sc}
-													/>
-													{sc}
-												</label>
-											{/each}
 										</div>
 									</div>
 
 									<div class="field">
 										<label for="reg-company">Company / Organization / LGU</label>
-										<input id="reg-company" bind:value={guestForm.company} required />
-									</div>
-
-									<div class="field">
-										<label for="reg-address">Address / Office Address</label>
-										<input id="reg-address" bind:value={guestForm.address} required />
+										<input id="reg-company" bind:value={guestForm.company} />
 									</div>
 
 									<div class="field">
 										<label for="reg-email">Email / Contact Number</label>
-										<input id="reg-email" bind:value={guestForm.email} required />
+										<input id="reg-email" bind:value={guestForm.email} />
 									</div>
 
 									{#if guestFormMessage}
@@ -927,9 +861,7 @@
 										</p>
 									{/if}
 
-									<button type="submit" class="btn-primary" style="margin-top: 1rem;"
-										>Register Guest</button
-									>
+									<button type="submit" class="btn-primary" style="margin-top: 1rem;">Register Guest</button>
 								</form>
 							</div>
 						{:else}
@@ -940,7 +872,6 @@
 											<th>#</th>
 											<th>Guest ID</th>
 											<th>Name</th>
-											<th>Sex/Age</th>
 											<th>Company/Org</th>
 											<th>Contact</th>
 											<th>Action</th>
@@ -955,14 +886,10 @@
 													<td>{i + 1}</td>
 													<td><span title={r.guestId}>{r.guestId.substring(0, 8)}...</span></td>
 													<td>{r.firstName} {r.lastName}</td>
-													<td>{r.sex} / {r.age}</td>
 													<td>
-														{r.company}
-														{#if r.employmentStatus}
-															<br /><small class="muted">{r.employmentStatus}</small>
-														{/if}
+														{r.company || 'NA'}
 													</td>
-													<td>{r.email}</td>
+													<td>{r.email || 'NA'}</td>
 													<td>
 														<button
 															class="btn-sm btn-danger"
@@ -1100,49 +1027,73 @@
 									saveSettings();
 								}}
 							>
-								<h3 style="margin-bottom: 1rem;">Attendance Settings</h3>
-								<div class="field">
-									<label for="attOpenTime">Attendance Opening Time</label>
-									<p class="form-hint">When guests can start scanning/recording attendance.</p>
-									<input
-										id="attOpenTime"
-										type="datetime-local"
-										bind:value={settingsData.attendance_open_time}
-									/>
+								<div class="settings-group">
+									<div class="group-header">
+										<h3>Attendance Period</h3>
+										<p class="form-hint">Define when guests can scan in and record attendance.</p>
+									</div>
+									
+									<div class="datetime-grid">
+										<div class="field">
+											<label for="attOpenTime">Opening Time</label>
+											<div class="datetime-wrapper">
+												<input
+													id="attOpenTime"
+													type="datetime-local"
+													class="clickable-datetime"
+													bind:value={settingsData.attendance_open_time}
+												/>
+											</div>
+										</div>
+
+										<div class="field">
+											<label for="attCloseTime">Closing Time</label>
+											<div class="datetime-wrapper">
+												<input
+													id="attCloseTime"
+													type="datetime-local"
+													class="clickable-datetime"
+													bind:value={settingsData.attendance_close_time}
+												/>
+											</div>
+										</div>
+									</div>
 								</div>
 
-								<div class="field">
-									<label for="attCloseTime">Attendance Closing Time</label>
-									<p class="form-hint">When attendance recording will close.</p>
-									<input
-										id="attCloseTime"
-										type="datetime-local"
-										bind:value={settingsData.attendance_close_time}
-									/>
+								<div class="settings-group" style="margin-top: 2.5rem;">
+									<div class="group-header">
+										<h3>Evaluation Period</h3>
+										<p class="form-hint">Define when the evaluation forms become accessible to guests.</p>
+									</div>
+
+									<div class="datetime-grid">
+										<div class="field">
+											<label for="evalOpenTime">Opening Time</label>
+											<div class="datetime-wrapper">
+												<input
+													id="evalOpenTime"
+													type="datetime-local"
+													class="clickable-datetime"
+													bind:value={settingsData.evaluation_open_time}
+												/>
+											</div>
+										</div>
+
+										<div class="field">
+											<label for="evalCloseTime">Closing Time</label>
+											<div class="datetime-wrapper">
+												<input
+													id="evalCloseTime"
+													type="datetime-local"
+													class="clickable-datetime"
+													bind:value={settingsData.evaluation_close_time}
+												/>
+											</div>
+										</div>
+									</div>
 								</div>
 
-								<h3 style="margin-top: 2rem; margin-bottom: 1rem;">Evaluation Settings</h3>
-								<div class="field">
-									<label for="evalOpenTime">Evaluation Opening Time</label>
-									<p class="form-hint">When guests can start submitting evaluations.</p>
-									<input
-										id="evalOpenTime"
-										type="datetime-local"
-										bind:value={settingsData.evaluation_open_time}
-									/>
-								</div>
-
-								<div class="field">
-									<label for="evalCloseTime">Evaluation Closing Time</label>
-									<p class="form-hint">When the evaluation form will automatically close.</p>
-									<input
-										id="evalCloseTime"
-										type="datetime-local"
-										bind:value={settingsData.evaluation_close_time}
-									/>
-								</div>
-
-								<div style="margin-top: 1.5rem;">
+								<div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-subtle);">
 									<button type="submit" class="btn-primary">Save Settings</button>
 								</div>
 							</form>

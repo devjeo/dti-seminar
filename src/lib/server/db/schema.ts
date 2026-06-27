@@ -4,26 +4,15 @@ export const guest = mysqlTable('guest', {
 	id: serial('id').primaryKey(),
 	guestId: varchar('guest_id', { length: 50 }).unique().notNull(), // UUID or Email or custom ID
 
-	// Name fields
-	title: varchar('title', { length: 20 }),
+	// Core Identification
 	firstName: varchar('first_name', { length: 100 }),
-	middleName: varchar('middle_name', { length: 100 }),
 	lastName: varchar('last_name', { length: 100 }),
-	suffix: varchar('suffix', { length: 20 }),
 
-	sex: varchar('sex', { length: 10 }), // M, F
-	age: int('age'),
-
-	// Employment
-	employmentStatus: varchar('employment_status', { length: 50 }), // Private, Gov't, Self-Employed, None
-
-	// Social Classification (can multiple apply? usually yes, store as JSON or comma separated string)
-	socialClassification: text('social_classification'),
-
+	// Organizational Details
 	company: varchar('company', { length: 255 }),
-	address: text('address'),
 	email: varchar('email', { length: 255 }),
 
+	// System Details
 	deviceId: varchar('device_id', { length: 255 }),
 	createdAt: timestamp('created_at').defaultNow()
 });
