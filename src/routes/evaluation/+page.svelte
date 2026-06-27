@@ -14,9 +14,9 @@
 	// Evaluation Form Data
 	let participantName = $state.raw('');
 	let trainingTitle = $state.raw(
-		'Emerging Technologies in Artificial Intelligence for Creative Industries'
+		'Empowering Collaboration, Active Participation, and Professional Engagement Through Digital Tools'
 	);
-	let venue = $state.raw('CCMS Lab 1, CNSC, Daet Camarines Norte');
+	let venue = $state.raw('CCMS Lab 2, CNSC, Daet Camarines Norte');
 	let date = $state.raw(new Date().toISOString().split('T')[0]);
 	let resourceSpeaker1 = $state.raw('');
 	let resourceSpeaker2 = $state.raw('');
@@ -242,6 +242,88 @@
 		localStorage.removeItem('dti_locked_guest_id');
 		goto('/attendance');
 	}
+
+	// Expanded mock database with image URLs
+	const availableSpeakers = [
+		{ id: 's1', name: 'John Doe', imageUrl: 'https://i.pravatar.cc/150?u=s1' },
+		{ id: 's2', name: 'Jane Smith', imageUrl: 'https://i.pravatar.cc/150?u=s2' },
+		{ id: 's3', name: 'Dr. Alan Turing', imageUrl: 'https://i.pravatar.cc/150?u=s3' }
+	];
+
+	type SpeakerTab = {
+		id: string;
+		speakerId: string; // Changed to track by ID instead of just name
+		ratings: Record<string, string>;
+	};
+
+	let tabs = $state<SpeakerTab[]>([
+		{ id: crypto.randomUUID(), speakerId: '', ratings: {} }
+	]);
+	
+	let activeTabId = $state(tabs[0].id);
+	let activeTab = $derived(tabs.find(t => t.id === activeTabId));
+
+	// Helper to get the full speaker object for the active tab
+	let activeSpeakerDetails = $derived(
+		availableSpeakers.find(s => s.id === activeTab?.speakerId)
+	);
+
+	// The criteria matrix with Tagalog sub-labels included
+	const speakerItems = [
+		{
+			key: 'obj',
+			label: 'Achievement of session objectives',
+			sub: 'Pagtatamo ng layunin ng sesyon' 
+		},
+		{
+			key: 'rel',
+			label: 'Relevance of topic covered',
+			sub: 'Kaugnayan ng pagsasanay sa paksa' 
+		},
+		{ 
+            key: 'mas', 
+            label: 'Mastery of the subject matter', 
+            sub: 'Kasanayan sa paksa o aralin' 
+        },
+		{ 
+            key: 'app', 
+            label: 'Appropriateness', 
+            sub: 'Kaangkupan ng nilalaman' 
+        },
+		{
+			key: 'int',
+			label: 'Opportunity for interactive participation',
+			sub: 'Pagkakataon para sa interaktibong partisipasyon' 
+		},
+		{ 
+            key: 'pre', 
+            label: 'Presentation skills', 
+            sub: 'Kasanayan sa paglalahad' 
+        },
+		{ 
+            key: 'tim', 
+            label: 'Time management', 
+            sub: 'Pamamahala sa oras' 
+        }
+	];
+
+	function addSpeakerTab() {
+		const newId = crypto.randomUUID();
+		tabs.push({ id: newId, speakerId: '', ratings: {} });
+		activeTabId = newId;
+	}
+
+	function removeTab(idToRemove: string) {
+		tabs = tabs.filter(t => t.id !== idToRemove);
+		if (activeTabId === idToRemove && tabs.length > 0) {
+			activeTabId = tabs[0].id;
+		}
+	}
+
+	function isTabComplete(tab: SpeakerTab) {
+		if (!tab.speakerId) return false;
+		return Object.keys(tab.ratings).length === speakerItems.length;
+	}
 </script>
 
 <svelte:head>
@@ -251,7 +333,7 @@
 <header class="dti-header">
 	<div class="dti-title">
 		<p class="dti-kicker">Seminar & Workshop</p>
-		<h1>Emerging Technologies in Artificial Intelligence for Creative Industries</h1>
+		<h1>Empowering Collaboration, Active Participation, and Professional Engagement Through Digital Tools</h1>
 		<p class="dti-subtitle">DTI Seminar &amp; Workshop &mdash; Evaluation</p>
 	</div>
 </header>
@@ -327,102 +409,107 @@
 			</section>
 
 			<section class="form-section">
-				<h3>Part I. Evaluation of the conduct of the training</h3>
-				<div class="field">
-					<label for="resourceSpeaker1">Resource Speaker 1 (Name)</label>
-					<input
-						id="resourceSpeaker1"
-						bind:value={resourceSpeaker1}
-						type="text"
-						placeholder="Optional"
-					/>
-				</div>
-				<div class="matrix">
-					{#each speaker1Items as item}
-						<div class="matrix-row">
-							<div class="matrix-label">
-								{item.label}
-								<small>{item.sub}</small>
-							</div>
-							<div class="rating-group">
-								{#each [5, 4, 3, 2, 1] as v}
-									<label class="rating-pill">
-										<input
-											type="radio"
-											name={item.key}
-											value={String(v)}
-											bind:group={ratings[item.key]}
-											required
-										/>
-										{v}
-									</label>
-								{/each}
-							</div>
-						</div>
+				<div class="evaluation-container">
+				<!-- STICKY TAB BAR -->
+				<div class="tabs-header">
+					{#each tabs as tab, index}
+						{@const tabSpeaker = availableSpeakers.find(s => s.id === tab.speakerId)}
+						<button 
+							class="tab {activeTabId === tab.id ? 'active' : ''}"
+							onclick={(e) => { e.preventDefault(); activeTabId = tab.id; }}
+						>
+							<span class="status-dot {isTabComplete(tab) ? 'complete' : 'incomplete'}"></span>
+							
+							{#if tabSpeaker}
+								<img src={tabSpeaker.imageUrl} alt={tabSpeaker.name} class="tab-mini-avatar" />
+							{/if}
+
+							{tabSpeaker ? tabSpeaker.name : `Speaker ${index + 1}`}
+							
+							{#if tabs.length > 1}
+								<button class="close-btn" onclick={(e) => { e.stopPropagation(); removeTab(tab.id); }}>&times;</button>
+							{/if}
+						</button>
 					{/each}
+					<button class="add-tab-btn" onclick={(e) => { e.preventDefault(); addSpeakerTab(); }}>
+						+ Add Speaker
+					</button>
 				</div>
 
-				<div class="field">
-					<label for="resourceSpeaker2">Resource Speaker 2 (Name)</label>
-					<input
-						id="resourceSpeaker2"
-						bind:value={resourceSpeaker2}
-						type="text"
-						placeholder="Optional"
-					/>
-				</div>
-				<div class="matrix">
-					{#each speaker2Items as item}
-						<div class="matrix-row">
-							<div class="matrix-label">
-								{item.label}
-								<small>{item.sub}</small>
-							</div>
-							<div class="rating-group">
-								{#each [5, 4, 3, 2, 1] as v}
-									<label class="rating-pill">
-										<input
-											type="radio"
-											name={item.key}
-											value={String(v)}
-											bind:group={ratings[item.key]}
-											required
-										/>
-										{v}
-									</label>
-								{/each}
-							</div>
-						</div>
-					{/each}
-				</div>
+				<!-- ACTIVE TAB CONTENT -->
+				{#if activeTab}
+					<div class="tab-content">
+						
+						<div class="speaker-selection-area">
+							{#if activeSpeakerDetails}
+								<div class="speaker-avatar-card">
+									<img src={activeSpeakerDetails.imageUrl} alt={activeSpeakerDetails.name} class="avatar-large" />
+									<div class="speaker-info">
+										<strong class="speaker-name-large">{activeSpeakerDetails.name}</strong>
+										<span class="muted">Resource Speaker</span>
+									</div>
+								</div>
+							{/if}
 
-				<h4 class="form-subtitle" style="margin-top: 2rem; margin-bottom: 1rem; font-weight: 600;">
-					Quality & Timeliness of Service
-				</h4>
-				<div class="matrix">
-					{#each serviceItems as item}
-						<div class="matrix-row">
-							<div class="matrix-label">
-								{item.label}
-								<small>{item.sub}</small>
-							</div>
-							<div class="rating-group">
-								{#each [5, 4, 3, 2, 1] as v}
-									<label class="rating-pill">
-										<input
-											type="radio"
-											name={item.key}
-											value={String(v)}
-											bind:group={ratings[item.key]}
-											required
-										/>
-										{v}
-									</label>
-								{/each}
+							<div class="visual-picker-container">
+								<label class="picker-label">
+									{activeSpeakerDetails ? 'Change assigned speaker' : 'Select a speaker to evaluate'}
+								</label>
+								
+								<div class="visual-speaker-picker">
+									{#each availableSpeakers as speaker}
+										{@const isSelected = activeTab.speakerId === speaker.id}
+										{@const isAssignedElsewhere = tabs.some(t => t.speakerId === speaker.id && t.id !== activeTab.id)}
+										
+										<button
+											class="speaker-card {isSelected ? 'selected' : ''} {isAssignedElsewhere ? 'disabled' : ''}"
+											disabled={isAssignedElsewhere}
+											onclick={(e) => { e.preventDefault(); activeTab.speakerId = speaker.id; }}
+											aria-pressed={isSelected}
+										>
+											<img src={speaker.imageUrl} alt={speaker.name} class="picker-avatar" />
+											<span class="picker-name">{speaker.name}</span>
+											
+											{#if isSelected}
+												<div class="selected-badge">✓</div>
+											{/if}
+										</button>
+									{/each}
+								</div>
 							</div>
 						</div>
-					{/each}
-				</div>
+
+						<!-- Evaluation Matrix -->
+						{#if activeTab.speakerId}
+							<div class="matrix">
+								{#each speakerItems as item}
+									<div class="matrix-row">
+										<div class="matrix-label">
+											<span class="label-primary">{item.label}</span>
+											<span class="label-secondary">{item.sub}</span>
+										</div>
+										<div class="rating-group">
+											{#each [1, 2, 3, 4, 5] as v}
+												<label class="rating-pill rating-val-{v}">
+													<input
+														type="radio"
+														name={`rating_${activeTab.id}_${item.key}`}
+														value={String(v)}
+														bind:group={activeTab.ratings[item.key]}
+													/>
+													{v}
+												</label>
+											{/each}
+										</div>
+									</div>
+								{/each}
+							</div>
+						{:else}
+							<p class="placeholder-text">Please select a speaker from the dropdown above to begin their evaluation.</p>
+						{/if}
+					</div>
+				{/if}
+			</div>
 			</section>
 
 			<section class="form-section">
@@ -435,8 +522,8 @@
 								<small>{item.sub}</small>
 							</div>
 							<div class="rating-group">
-								{#each [5, 4, 3, 2, 1] as v}
-									<label class="rating-pill">
+								{#each [1, 2, 3, 4, 5] as v}
+									<label class="rating-pill rating-val-{v}">
 										<input
 											type="radio"
 											name={item.key}

@@ -6,7 +6,7 @@
 	let { data } = $props();
 
 	let currentSection = $state('selection'); // 'selection', 'attendance', 'evaluation', 'success', 'completed'
-	const DEFAULT_EVENT = 'Emerging Technologies in Artificial Intelligence for Creative Industries';
+	const DEFAULT_EVENT = 'Empowering Collaboration, Active Participation, and Professional Engagement Through Digital Tools';
 	let selectedEvent = $state(DEFAULT_EVENT);
 	let eventName = $state(DEFAULT_EVENT);
 

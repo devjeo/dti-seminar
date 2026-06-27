@@ -603,3 +603,368 @@ body {
 	cursor: pointer;
 	font-weight: 600;
 }
+
+
+/* =========================================
+   Speaker Evaluation Tabs (Dark Mode Sync)
+   ========================================= */
+
+.tabs-header {
+	display: flex;
+	gap: 0.5rem;
+	position: sticky;
+	top: 0;
+	/* Use the site's dark elevated background so it covers scrolled content */
+	background: var(--bg-elevated); 
+	z-index: 100;
+	border-bottom: 2px solid var(--border-subtle);
+	overflow-x: auto;
+	white-space: nowrap;
+}
+
+.tab {
+	position: relative; /* Required for absolute positioning of inner elements if needed */
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.75rem 1.25rem;
+	border: 1px solid var(--border-subtle);
+	border-radius: 0 0;
+	background: var(--bg-alt);
+	cursor: pointer;
+	color: var(--text-muted);
+	transition: background 0.2s, color 0.2s; /* Smooth hover transition */
+	border-top: 3px solid var(--border-subtle); /* Prevents layout shift when active */
+}
+
+.tab:hover {
+	background: rgba(255, 255, 255, 0.05); /* Slight highlight on hover so users know it's clickable */
+}
+
+.tab.active {
+	background: var(--bg-elevated);
+	border-top-color: var(--primary);
+	color: var(--text-main);
+}
+
+/* Optional: Slight background gradient to make the active tab "pop" visually */
+.tab.active {
+	background: linear-gradient(to bottom, rgba(79, 70, 229, 0.08), var(--bg-elevated) 40%);
+}
+
+.status-dot {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+}
+
+.status-dot.incomplete {
+	background-color: var(--danger);
+}
+
+.status-dot.complete {
+	background-color: var(--accent);
+}
+
+.add-tab-btn {
+	background: transparent;
+	border: 1px dashed var(--border-subtle);
+	color: var(--text-muted);
+	padding: 0.75rem 1rem;
+	margin: 0.5rem 0;
+	border-radius: 8px;
+	cursor: pointer;
+	transition: color 0.2s, border-color 0.2s;
+}
+
+.add-tab-btn:hover {
+	color: var(--text-main);
+	border-color: var(--primary);
+}
+
+.close-btn {
+	background: none;
+	border: none;
+	color: var(--text-muted);
+	font-size: 1.2rem;
+	line-height: 1;
+	padding: 0;
+	margin-left: 0.5rem;
+	cursor: pointer;
+}
+
+.close-btn:hover {
+	color: var(--danger);
+}
+
+.selection-field {
+	flex: 1;
+	min-width: 250px;
+}
+
+.speaker-avatar-card {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	padding: 0.5rem;
+}
+
+.avatar {
+	width: 60px;
+	height: 60px;
+	border-radius: 50%;
+	object-fit: cover;
+	border: 2px solid var(--border-subtle);
+}
+
+.speaker-info {
+	display: flex;
+	flex-direction: column;
+}
+
+.muted {
+	color: var(--text-muted);
+	font-size: 0.875rem;
+}
+
+/* =========================================
+   Matrix Text Stacking Overrides
+   ========================================= */
+
+.matrix-label {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.label-primary {
+	font-weight: 600;
+	color: var(--text-main);
+}
+
+.label-secondary {
+	font-size: 0.875rem;
+	color: var(--text-muted);
+	font-style: italic;
+}
+
+/* =========================================
+   New Tab Mini-Avatar
+   ========================================= */
+.tab-mini-avatar {
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	object-fit: cover;
+	border: 1px solid var(--border-subtle);
+	margin-left: 0.25rem;
+}
+
+/* =========================================
+   Rearranged Speaker Selection Area
+   ========================================= */
+.speaker-selection-area {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1.5rem;
+	align-items: center; /* Centers the profile card and dropdown vertically */
+	justify-content: space-between; /* Pushes dropdown to the right on desktop */
+	margin-bottom: 2rem;
+	padding: 1.5rem;
+	background: rgba(255, 255, 255, 0.02); 
+	border-radius: 12px;
+	border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.speaker-avatar-card {
+	display: flex;
+	align-items: center;
+	gap: 1.25rem;
+}
+
+.avatar-large {
+	width: 72px;
+	height: 72px;
+	border-radius: 50%;
+	object-fit: cover;
+	border: 2px solid var(--border-subtle);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.speaker-info {
+	display: flex;
+	flex-direction: column;
+	gap: 0.2rem;
+}
+
+.speaker-name-large {
+	font-size: 1.25rem;
+	font-weight: 700;
+	color: var(--text-main);
+}
+
+.selection-field {
+	flex: 1;
+	min-width: 250px;
+	max-width: 400px; /* Prevents the dropdown from stretching too far on large screens */
+	margin-bottom: 0; /* Overrides default field margin */
+}
+
+/* Mobile adjustment so they stack cleanly */
+@media (max-width: 640px) {
+	.speaker-selection-area {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+	.selection-field {
+		width: 100%;
+		max-width: 100%;
+	}
+}
+
+/* Base hover effect for all unselected pills */
+.rating-pill:hover {
+	border-color: var(--text-muted);
+	color: var(--text-main);
+	background: rgba(255, 255, 255, 0.05);
+}
+
+/* =========================================
+  Color-Coded Rating Scale (1 to 5)
+  ========================================= 
+*/
+
+/* 1: Poor (Red) */
+.rating-val-1:has(input:checked) {
+	background: rgba(239, 68, 68, 0.15); /* Translucent red */
+	border-color: #ef4444; 
+	color: #fca5a5; /* Lighter red text for contrast */
+	box-shadow: 0 2px 12px rgba(239, 68, 68, 0.2);
+}
+
+/* 2: Fair (Orange) */
+.rating-val-2:has(input:checked) {
+	background: rgba(249, 115, 22, 0.15);
+	border-color: #f97316;
+	color: #fdba74;
+	box-shadow: 0 2px 12px rgba(249, 115, 22, 0.2);
+}
+
+/* 3: Good (Yellow) */
+.rating-val-3:has(input:checked) {
+	background: rgba(234, 179, 8, 0.15);
+	border-color: #eab308;
+	color: #fde047;
+	box-shadow: 0 2px 12px rgba(234, 179, 8, 0.2);
+}
+
+/* 4: Very Good (Light Green/Teal) */
+.rating-val-4:has(input:checked) {
+	background: rgba(20, 184, 166, 0.15);
+	border-color: #14b8a6;
+	color: #5eead4;
+	box-shadow: 0 2px 12px rgba(20, 184, 166, 0.2);
+}
+
+/* 5: Excellent (Green) */
+.rating-val-5:has(input:checked) {
+	background: rgba(34, 197, 94, 0.15);
+	border-color: #22c55e;
+	color: #86efac;
+	box-shadow: 0 2px 12px rgba(34, 197, 94, 0.2);
+}
+
+/* =========================================
+   Visual Speaker Picker
+   ========================================= */
+
+.visual-picker-container {
+	width: 100%;
+	margin-bottom: 2rem;
+}
+
+.picker-label {
+	display: block;
+	font-size: 0.9rem;
+	margin-bottom: 1rem;
+	color: var(--text-muted);
+}
+
+.visual-speaker-picker {
+	display: flex;
+	gap: 1rem;
+	flex-wrap: wrap; /* Allows cards to drop to the next line on small screens */
+}
+
+.speaker-card {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.75rem;
+	padding: 1rem;
+	background: var(--bg-alt);
+	border: 2px solid var(--border-subtle);
+	border-radius: 12px;
+	cursor: pointer;
+	min-width: 120px;
+	transition: all 0.2s ease;
+	color: var(--text-muted);
+}
+
+.speaker-card:hover:not(.disabled) {
+	border-color: rgba(148, 163, 184, 0.6);
+	background: rgba(255, 255, 255, 0.05);
+	transform: translateY(-2px);
+}
+
+.picker-avatar {
+	width: 64px;
+	height: 64px;
+	border-radius: 50%;
+	object-fit: cover;
+	border: 2px solid transparent;
+	transition: all 0.2s ease;
+}
+
+.picker-name {
+	font-size: 0.9rem;
+	font-weight: 600;
+	text-align: center;
+}
+
+/* Selected State */
+.speaker-card.selected {
+	background: rgba(79, 70, 229, 0.1); /* Soft primary color background */
+	border-color: var(--primary);
+	color: var(--text-main);
+}
+
+.speaker-card.selected .picker-avatar {
+	border-color: var(--primary);
+	box-shadow: 0 0 15px rgba(79, 70, 229, 0.3);
+}
+
+.selected-badge {
+	position: absolute;
+	top: -8px;
+	right: -8px;
+	background: var(--primary);
+	color: white;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 0.8rem;
+	font-weight: bold;
+	box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* Disabled State (Assigned to another tab) */
+.speaker-card.disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+	filter: grayscale(100%);
+}

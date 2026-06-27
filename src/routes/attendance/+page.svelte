@@ -147,7 +147,7 @@
 <header class="dti-header">
 	<div class="dti-title">
 		<p class="dti-kicker">Seminar & Workshop</p>
-		<h1>Emerging Technologies in Artificial Intelligence for Creative Industries</h1>
+		<h1>Empowering Collaboration, Active Participation, and Professional Engagement Through Digital Tools</h1>
 		<p class="dti-subtitle">DTI Seminar &amp; Workshop &mdash; Attendance</p>
 	</div>
 </header>

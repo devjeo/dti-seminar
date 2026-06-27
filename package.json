@@ -4,7 +4,7 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"dev": "vite dev",
+		"dev": "vite dev --host",
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
@@ -38,7 +38,8 @@
 	},
 	"dependencies": {
 		"@better-auth/core": "^1.5.5",
-		"bcryptjs": "^3.0.3"
+		"bcryptjs": "^3.0.3",
+		"xlsx": "^0.18.5"
 	},
 	"overrides": {
 		"cookie": "^0.7.2",

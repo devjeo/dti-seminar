@@ -2,6 +2,15 @@
 	import { onMount } from 'svelte';
 	import './admin.css';
 
+	import * as XLSX from 'xlsx'; // New import for Excel
+
+	// --- Import Modal States ---
+	let showImportModal = $state(false);
+	let isDragging = $state(false);
+	let importSourceUrl = $state('');
+	let importMessage = $state('');
+	let isImporting = $state(false);
+
 	let isLoggedIn = $state(false);
 	let username = $state('');
 	let password = $state('');
@@ -478,6 +487,133 @@
 			guestFormMessage = 'Server error during registration.';
 		}
 	}
+	// 1. Handle File Drops & Uploads
+	async function handleFileUpload(file: File) {
+		isImporting = true;
+		importMessage = 'Reading file...';
+		
+		const reader = new FileReader();
+		reader.onload = async (e) => {
+			const data = e.target?.result;
+			if (!data) return;
+
+			// Read Excel or CSV using XLSX library
+			const workbook = XLSX.read(data, { type: 'binary' });
+			const firstSheetName = workbook.SheetNames[0];
+			const worksheet = workbook.Sheets[firstSheetName];
+			
+			// Convert sheet to 2D array
+			const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+			
+			await processImportedData(jsonData);
+		};
+		reader.readAsBinaryString(file);
+	}
+
+	function onDrop(e: DragEvent) {
+		e.preventDefault();
+		isDragging = false;
+		if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+			handleFileUpload(e.dataTransfer.files[0]);
+		}
+	}
+
+	// 2. Handle Google Sheets Link
+	async function fetchGoogleSheet() {
+		if (!importSourceUrl.includes('docs.google.com/spreadsheets')) {
+			importMessage = 'Please enter a valid Google Sheets URL.';
+			return;
+		}
+
+		isImporting = true;
+		importMessage = 'Fetching from Google Sheets...';
+
+		try {
+			// Extract the Sheet ID and construct a CSV export URL
+			const sheetIdMatch = importSourceUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+			if (!sheetIdMatch) throw new Error('Invalid URL format');
+			
+			const sheetId = sheetIdMatch[1];
+			// Warning: The Google Sheet MUST be set to "Anyone with the link can view"
+			const exportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+
+			const response = await fetch(exportUrl);
+			if (!response.ok) throw new Error('Could not read sheet. Ensure it is set to Public.');
+			
+			const csvText = await response.text();
+			
+			// Parse the fetched CSV text
+			const workbook = XLSX.read(csvText, { type: 'string' });
+			const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+			const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+
+			await processImportedData(jsonData);
+		} catch (error: any) {
+			importMessage = error.message;
+			isImporting = false;
+		}
+	}
+	async function processImportedData(dataRows: any[][]) {
+		isImporting = true;
+		importMessage = 'Validating data...';
+		
+		const validGuests = [];
+
+		// Start from index 1 to skip the header row
+		for (let i = 1; i < dataRows.length; i++) {
+			const values = dataRows[i];
+			if (!values || values.length === 0 || (!values[0] && !values[1])) continue;
+
+			const guestData = {
+				firstName: String(values[0] || '').trim(),
+				lastName: String(values[1] || '').trim(),
+				middleName: String(values[2] || '').trim(),
+				suffix: String(values[3] || '').trim(),
+				sex: String(values[4] || '').trim(),
+				age: String(values[5] || '').trim(),
+				employmentStatus: String(values[6] || '').trim(),
+				socialClassification: values[7] ? String(values[7]).split(';').map(s => s.trim()) : [],
+				company: String(values[8] || '').trim(),
+				address: String(values[9] || '').trim(),
+				email: String(values[10] || '').trim()
+			};
+
+			validGuests.push(guestData);
+		}
+
+		importMessage = `Uploading ${validGuests.length} guests...`;
+		let successCount = 0;
+
+		for (const guest of validGuests) {
+			try {
+				const res = await fetch('/api/guests', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(guest)
+				});
+
+				if (res.ok) {
+					const added = await res.json();
+					guestData = [Array.isArray(added) ? added[0] : added, ...guestData];
+					successCount++;
+				}
+			} catch (err) {
+				console.error('Failed to upload guest:', guest.firstName);
+			}
+		}
+
+		calculateStats();
+		importMessage = `Successfully imported ${successCount} out of ${validGuests.length} guests.`;
+		isImporting = false;
+		
+		// Auto-close modal after 2 seconds on success
+		if (successCount > 0) {
+			setTimeout(() => {
+				showImportModal = false;
+				importMessage = '';
+			}, 2500);
+		}
+	}
 </script>
 
 <svelte:head>
@@ -644,24 +780,31 @@
 							<h2>Registered Guests</h2>
 							<div class="admin-actions">
 								{#if !isAddingGuest}
-									<input
-										type="text"
-										class="search-input"
-										placeholder="Search name or ID..."
-										bind:value={guestFilter}
-									/>
-									<button
-										class="btn-primary"
-										onclick={() => {
-											isAddingGuest = true;
-											guestFormMessage = '';
-										}}
-									>
-										Add New Guest
-									</button>
-									<button class="btn-secondary" onclick={() => exportCSV('guests')}>
-										Export CSV
-									</button>
+									<div>
+										<input
+											type="text"
+											class="search-input"
+											placeholder="Search name or ID..."
+											bind:value={guestFilter}
+										/>
+									</div>
+									<div>
+										<button
+											class="btn-primary"
+											onclick={() => {
+												isAddingGuest = true;
+												guestFormMessage = '';
+											}}
+										>
+											Add New Guest
+										</button>
+										<button class="btn-secondary" onclick={() => { showImportModal = true; importMessage = ''; }}>
+											Import Data
+										</button>
+										<button class="btn-secondary" onclick={() => exportCSV('guests')}>
+											Export CSV
+										</button>
+									</div>
 								{:else}
 									<button
 										class="btn-secondary"
@@ -1010,3 +1153,69 @@
 		{/if}
 	</main>
 </div>
+{#if showImportModal}
+	<div class="modal-overlay active">
+		<div class="modal-dialog" style="max-width: 500px; text-align: left;">
+			<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+				<h3 style="margin: 0; color: var(--accent-color);">Import Guest List</h3>
+				<button class="btn-ghost" style="padding: 4px 8px;" onclick={() => showImportModal = false}>✕</button>
+			</div>
+
+			<div class="field">
+				<label>Upload File (Excel or CSV)</label>
+				<div 
+					class="drag-zone {isDragging ? 'dragging' : ''}"
+					ondragover={(e) => { e.preventDefault(); isDragging = true; }}
+					ondragleave={() => isDragging = false}
+					ondrop={onDrop}
+					onclick={() => document.getElementById('hiddenFileInput')?.click()}
+					role="button"
+					tabindex="0"
+				>
+					<input 
+						type="file" 
+						id="hiddenFileInput" 
+						accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
+						style="display: none;" 
+						onchange={(e) => {
+							const file = (e.target as HTMLInputElement).files?.[0];
+							if (file) handleFileUpload(file);
+						}}
+					/>
+					<div style="font-size: 32px; margin-bottom: 8px; color: var(--text-muted);">📄</div>
+					<strong>Click to browse</strong> or drag and drop a file here
+					<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Supports .xlsx, .xls, .csv</div>
+				</div>
+			</div>
+
+			<div style="text-align: center; margin: 16px 0; color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">
+				— OR —
+			</div>
+
+			<div class="field">
+				<label for="sheetUrl">Import via Google Sheets</label>
+				<p style="font-size: 11px; color: var(--accent-color); margin-bottom: 8px; font-style: italic;">
+					* Ensure the sheet's access is set to "Anyone with the link can view".
+				</p>
+				<div style="display: flex; gap: 8px;">
+					<input 
+						id="sheetUrl" 
+						type="url" 
+						placeholder="https://docs.google.com/spreadsheets/d/..." 
+						bind:value={importSourceUrl} 
+						disabled={isImporting}
+					/>
+					<button class="btn-secondary" onclick={fetchGoogleSheet} disabled={isImporting || !importSourceUrl}>
+						Fetch
+					</button>
+				</div>
+			</div>
+
+			{#if importMessage}
+				<div class="message" style="margin-top: 16px; background: rgba(255, 214, 0, 0.1); border-left: 4px solid var(--accent-color); color: var(--text-main);">
+					{importMessage}
+				</div>
+			{/if}
+		</div>
+	</div>
+{/if}
