@@ -2,6 +2,15 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	
+	// Safe ID generator that works on both HTTP and HTTPS
+	function generateSafeId() {
+		if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+			return crypto.randomUUID();
+		}
+		// Fallback for non-secure HTTP connections
+		return Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
+	}
 
 	let guestId = $state.raw('');
 	let formMessage = $state.raw('');
@@ -265,7 +274,7 @@
 	function handleSignout() {
 		localStorage.removeItem('dti_session_guest_id');
 		localStorage.removeItem('dti_locked_guest_id');
-		goto('/attendance');
+		goto('/');
 	}
 
 	// Expanded mock database with image URLs
@@ -281,7 +290,7 @@
 	};
 
 	let tabs = $state<SpeakerTab[]>([
-		{ id: crypto.randomUUID(), speakerId: '', ratings: {} }
+		{ id: generateSafeId(), speakerId: '', ratings: {} }
 	]);
 	
 	let activeTabId = $state(tabs[0].id);
@@ -332,7 +341,7 @@
 	];
 
 	function addSpeakerTab() {
-		const newId = crypto.randomUUID();
+		const newId = generateSafeId();
 		tabs.push({ id: newId, speakerId: '', ratings: {} });
 		activeTabId = newId;
 	}

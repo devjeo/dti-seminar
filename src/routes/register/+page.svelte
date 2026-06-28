@@ -13,10 +13,10 @@
 	let errorMessage = $state('');
 
 	onMount(() => {
-		// If they already have an active session, push them to the evaluation
-		const storedId = localStorage.getItem('dti_session_guest_id');
+		// If they already have an active profile on this device, send to hub
+		const storedId = localStorage.getItem('dti_locked_guest_id');
 		if (storedId) {
-			goto('/evaluation');
+			goto('/');
 		}
 	});
 
@@ -26,7 +26,6 @@
 		errorMessage = '';
 
 		try {
-			// Hit the POST endpoint we created earlier
 			const res = await fetch('/api/guests', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -36,22 +35,11 @@
 			if (res.ok) {
 				const data = await res.json();
 				
-				// 1. Lock the device to this new guest
+				// Lock the device to this new guest profile
 				localStorage.setItem('dti_locked_guest_id', data.guest.guestId);
 				
-				// 2. Automatically record their attendance
-				await fetch('/api/attendance', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ 
-						guestId: data.guest.guestId,
-						deviceKey: localStorage.getItem('dti_device_key') 
-					})
-				});
-
-				// 3. Start their session and send them to the evaluation
-				localStorage.setItem('dti_session_guest_id', data.guest.guestId);
-				goto('/evaluation');
+				// Route back to the homepage so they can proceed to Step 2
+				goto('/');
 			} else {
 				const err = await res.json();
 				errorMessage = err.error || 'Failed to register. Please see an administrator.';
@@ -65,13 +53,13 @@
 </script>
 
 <svelte:head>
-	<title>Walk-In Registration | DTI</title>
+	<title>Registration | DTI</title>
 </svelte:head>
 
 <main class="register-container">
 	<div class="glass-card animation-pop-up">
 		<div class="card-header">
-			<h2>Walk-In Registration</h2>
+			<h2>Registration</h2>
 			<p>Please enter your details to register for the seminar and record your attendance.</p>
 		</div>
 
@@ -110,8 +98,13 @@
 					</svg>
 					Registering...
 				{:else}
-					Register & Continue
+					Register
 				{/if}
+			</button>
+			
+			<!-- Added Escape Hatch -->
+			<button type="button" class="back-link" onclick={() => goto('/')} disabled={isSubmitting}>
+				&larr; Back to Homepage
 			</button>
 		</form>
 	</div>
@@ -121,31 +114,26 @@
 	/* =========================================
 	   Registration Specific Layout
 	   ========================================= */
-	/* Ensure the page background is painted immediately, even before
-	   the card's entrance animation runs. Without this, if the global
-	   layout's background hasn't applied yet, you get a flash of
-	   whatever the browser default (white) is. Swap var(--bg-base) for
-	   whatever your actual root background variable is called. */
+	
 	:global(html),
 	:global(body) {
-		background: var(--bg-base, #0b1020);
+		background: var(--bg-color, #050814);
 	}
 
 	.register-container {
 		display: flex;
 		justify-content: center;
 		align-items: center;
-		min-height: 80vh;
+		min-height: 100vh;
 		padding: 1rem;
-		background: var(--bg-base, #0b1020);
 	}
 
 	.glass-card {
 		background: rgba(11, 16, 32, 0.6);
 		backdrop-filter: blur(16px);
 		border: 1px solid rgba(148, 163, 184, 0.1);
-		border-radius: 20px;
-		padding: 2.5rem;
+		border-radius: 24px;
+		padding: 3rem 2.5rem;
 		width: 100%;
 		max-width: 500px;
 		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
@@ -188,8 +176,9 @@
 		color: var(--text-main);
 	}
 
+	/* Mapped to Golden Yellow for high contrast */
 	.text-accent {
-		color: var(--primary);
+		color: var(--accent); 
 	}
 
 	.field input {
@@ -205,7 +194,8 @@
 	.field input:focus {
 		outline: none;
 		border-color: var(--primary);
-		box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+		/* Swapped hardcoded indigo for dynamic maroon glow */
+		box-shadow: 0 0 0 3px var(--primary-soft); 
 		background: rgba(15, 23, 42, 0.8);
 	}
 
@@ -220,6 +210,24 @@
 		margin-bottom: 1.5rem;
 	}
 
+	/* New Back Link Styling */
+	.back-link {
+		display: block;
+		width: 100%;
+		background: none;
+		border: none;
+		color: var(--text-muted);
+		font-size: 0.95rem;
+		margin-top: 1rem;
+		padding: 0.75rem;
+		cursor: pointer;
+		transition: color 0.2s;
+	}
+
+	.back-link:hover {
+		color: var(--text-main);
+	}
+
 	.animation-pop-up {
 		animation: popUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 		animation-fill-mode: backwards;
@@ -230,7 +238,7 @@
 		to { opacity: 1; transform: scale(1) translateY(0); }
 	}
 
-	/* Spinner Animation (Reused from evaluation) */
+	/* Spinner Animation */
 	.btn-spinner {
 		animation: rotate 2s linear infinite;
 		width: 20px;

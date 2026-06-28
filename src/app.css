@@ -2,14 +2,14 @@
 	--bg: #050814;
 	--bg-elevated: #0b1020;
 	--bg-alt: #080d1a;
-	--primary: #4f46e5;
-	--primary-soft: rgba(79, 70, 229, 0.15);
-	--accent: #22c55e;
-	--text-main: #e5e7eb;
-	--text-muted: #9ca3af;
-	--border-subtle: rgba(148, 163, 184, 0.3);
+	--primary: #8B0021; /* Rich Maroon from the poster */
+	--primary-soft: rgba(139, 0, 33, 0.15); /* Translucent Maroon */
+	--accent: #FFCC00; /* Golden Yellow from 'CREATIVES' */
+	--text-main: #f8fafc;
+	--text-muted: #94a3b8;
+	--border-subtle: rgba(148, 163, 184, 0.2);
 	--danger: #ef4444;
-	--shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.9);
+	--shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.6);
 	--radius-lg: 18px;
 	--radius-pill: 999px;
 }
@@ -182,7 +182,7 @@ body {
 	font-size: 1.1rem;
 	font-weight: 600;
 	margin: 0 0 1.25rem;
-	color: var(--primary);
+	color: white;
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 }

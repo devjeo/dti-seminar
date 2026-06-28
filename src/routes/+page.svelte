@@ -1,584 +1,297 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
-	import type { PageData } from './$types';
-
+	
 	let { data } = $props();
+	const event = data?.event || null;
 
-	let currentSection = $state('selection'); // 'selection', 'attendance', 'evaluation', 'success', 'completed'
-	const DEFAULT_EVENT = 'Empowering Collaboration, Active Participation, and Professional Engagement Through Digital Tools';
-	let selectedEvent = $state(DEFAULT_EVENT);
-	let eventName = $state(DEFAULT_EVENT);
-
-	let attendanceData: any = $state({});
-
+	// Schedule States
+	let attStatus = $state('checking'); 
+	let attMessage = $state('Checking schedule...');
 	let isEvalOpen = $state(false);
-	let evalMessage = $state('Checking evaluation schedule...');
+	let evalMessage = $state('Checking schedule...');
+
+	// Tracking the registered and checked-in user on this device
+	let localGuestId = $state('');
+	let isCheckedIn = $state(false);
+	
+	// Modal & Timer State
+	let showDeleteModal = $state(false);
+	let deleteCountdown = $state(0);
+	let countdownInterval: ReturnType<typeof setInterval>;
+
+	// --- NEW MODAL FUNCTIONS ---
+	function openDeleteModal() {
+		showDeleteModal = true;
+		deleteCountdown = 3; // 3-second safety timer
+		clearInterval(countdownInterval);
+		
+		countdownInterval = setInterval(() => {
+			deleteCountdown -= 1;
+			if (deleteCountdown <= 0) {
+				clearInterval(countdownInterval);
+			}
+		}, 1000);
+	}
+
+	function closeDeleteModal() {
+		showDeleteModal = false;
+		clearInterval(countdownInterval);
+	}
+
+	function deleteProfile() {
+		localStorage.removeItem('dti_locked_guest_id');
+		localStorage.removeItem('dti_session_guest_id');
+		localGuestId = '';
+		isCheckedIn = false;
+		closeDeleteModal();
+	}
+	
+	// --- UPDATE navStep1 TO USE THE NEW FUNCTION ---
+	function navStep1(e: Event) {
+		e.preventDefault();
+		if (localGuestId) {
+			openDeleteModal(); // Replaced showDeleteModal = true
+		} else if (attStatus === 'open') {
+			goto('/register');
+		}
+	}
 
 	onMount(async () => {
+		// 1. Check device storage for registration and check-in status
+		localGuestId = localStorage.getItem('dti_locked_guest_id') || '';
+		const sessionGuestId = localStorage.getItem('dti_session_guest_id');
+		
+		if (localGuestId && sessionGuestId === localGuestId) {
+			isCheckedIn = true;
+		}
+
+		// 2. Fetch system schedule
 		try {
-			const res = await fetch('/api/evaluations/status');
+			const res = await fetch('/api/status');
 			if (res.ok) {
-				const data = await res.json();
-				isEvalOpen = data.isOpen;
-				evalMessage = data.message;
+				const statusData = await res.json();
+				attStatus = statusData.attendance.status;
+				attMessage = statusData.attendance.message;
+				isEvalOpen = statusData.evaluation.isOpen;
+				evalMessage = statusData.evaluation.message;
 			} else {
-				evalMessage = 'Evaluation schedule unavailable.';
+				attStatus = 'closed';
+				attMessage = 'System schedule unavailable.';
 			}
 		} catch (error) {
-			console.error("Failed to load schedule:", error);
-			evalMessage = 'Network error checking schedule.';
+			attStatus = 'closed';
+			attMessage = 'Network error checking schedule.';
 		}
 	});
-
-	// State for modal
-	let showModal = $state(false);
-	let modalTitle = $state('');
-	let modalMessage = $state('');
-	let modalIcon = $state('');
-	let modalType = $state('info'); // 'info', 'error', 'validation'
-
-	function getDeviceId() {
-		let deviceId = localStorage.getItem('device_id');
-		if (!deviceId) {
-			deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-			localStorage.setItem('device_id', deviceId);
-		}
-		return deviceId;
-	}
-
-	interface StatusData {
-		attendance_completed: boolean;
-		evaluation_completed: boolean;
-		attendance_id?: string;
-		attendee_name?: string;
-	}
-
-	async function checkServerStatus(deviceId: string, event: string): Promise<StatusData> {
-		// Mocking server check for now. In real implementation, fetch from API.
-		// const response = await fetch(`/api/check-status?device_id=${deviceId}&event=${event}`);
-		// return await response.json();
-		return { attendance_completed: false, evaluation_completed: false };
-	}
-
-	async function handleProceed() {
-		if (!selectedEvent) return;
-
-		const deviceId = getDeviceId();
-		const completionKey = `eval_completed_${deviceId}_${selectedEvent}`;
-
-		if (localStorage.getItem(completionKey) === 'true') {
-			showModalDialog(
-				'Already Completed',
-				'You have already submitted an evaluation for this event.',
-				'✅'
-			);
-			return;
-		}
-
-		// Mock status check
-		const statusData = await checkServerStatus(deviceId, selectedEvent);
-
-		if (statusData.attendance_completed && statusData.evaluation_completed) {
-			localStorage.setItem(completionKey, 'true');
-			currentSection = 'completed';
-			return;
-		}
-
-		if (!statusData.attendance_completed) {
-			eventName = selectedEvent;
-			goto('/attendance');
-			return;
-		}
-
-		// Logic for existing attendance but no evaluation... omitted for brevity in mock
-		// ...
-	}
-
-	function isEvaluationTime() {
-		const currentHour = new Date().getHours();
-		// Check if within 5:00 PM to 6:00 PM window (17 to 18)
-		// For demo purposes, returning true
-		return true;
-		// return (currentHour >= 17 && currentHour < 18);
-	}
-
-	function goBackToSelection() {
-		currentSection = 'selection';
-		// Reset forms logic would go here
-	}
-
-	async function submitAttendance(event: Event) {
-		// Mock submission
-		const formData = new FormData(event.target as HTMLFormElement);
-		/*
-        const response = await fetch('/api/attendance', {
-            method: 'POST',
-            body: formData
-        });
-        const result = await response.json();
-        */
-		// Mock success
-		const result = { success: true, attendance_id: '123' };
-
-		if (result.success) {
-			const firstName = formData.get('first_name') as string;
-			const lastName = formData.get('last_name') as string;
-
-			attendanceData = {
-				firstName,
-				lastName,
-				eventName: selectedEvent,
-				attendanceId: result.attendance_id
-			};
-			localStorage.setItem('lastAttendance', JSON.stringify(attendanceData));
-			currentSection = 'success';
-		} else {
-			showModalDialog('Error', 'Registration Failed', '❌', 'error');
-		}
-	}
-
-	function proceedToEvaluation() {
-		if (!isEvalOpen) {
-			showModalDialog('Evaluation Closed', evalMessage, '🕒', 'info');
-			return;
-		}
-		currentSection = 'evaluation';
-	}
-
-	async function submitEvaluation(event: Event) {
-		// Mock submission
-		const formData = new FormData(event.target as HTMLFormElement);
-		/*
-        const response = await fetch('/api/evaluation', {
-            method: 'POST',
-            body: formData
-        });
-        */
-		// Mock success
-		const result = { success: true };
-
-		if (result.success) {
-			const deviceId = getDeviceId();
-			const completionKey = `eval_completed_${deviceId}_${selectedEvent}`;
-			localStorage.setItem(completionKey, 'true');
-			localStorage.removeItem('lastAttendance');
-			currentSection = 'completed';
-		}
-	}
-
-	function showModalDialog(title: string, message: string, icon = '🔒', type = 'info') {
-		modalTitle = title;
-		modalMessage = message;
-		modalIcon = icon;
-		modalType = type;
-		showModal = true;
-	}
 </script>
 
 <svelte:head>
-	<title>DTI Attendance & Evaluation</title>
+	<title>Welcome | DTI Seminar Portal</title>
 </svelte:head>
 
-<div class="app-container">
-	<!-- Header Section -->
-	<header class="app-header">
-		<div class="logo-container">
-			<div class="logo-box">
-				<img src="/assets/logo_cnsc.png" alt="CNSC Logo" />
+{#if showDeleteModal}
+	<div class="modal-overlay animation-fade-in">
+		<div class="modal-card animation-pop-up">
+			
+			<div class="modal-icon text-danger">
+				{@render IconWarning()}
 			</div>
-			<div class="logo-box">
-				<img src="/assets/ccms_logo.png" alt="CCMS Logo" />
-			</div>
-		</div>
-
-		<div class="poster-container">
-			<img
-				src="/assets/theme.jpg"
-				alt="Emerging Technologies in AI for Creative Industries - Poster"
-			/>
-		</div>
-	</header>
-
-	<!-- Main Selection Section -->
-	{#if currentSection === 'selection'}
-		<main class="card" id="selectionSection">
-			<div class="field">
-				<label for="eventSelector">Event</label>
-				<div class="read-only-box">{selectedEvent}</div>
-			</div>
-
-			<div class="main-action">
-				<button type="button" class="proceed-btn" onclick={handleProceed}>▶ PROCEED</button>
-
-				<p class="subtitle" style="text-align: center;">
-					Click PROCEED to register attendance or complete your evaluation.<br />
-					<strong style="color: {isEvalOpen ? 'var(--accent-green)' : 'var(--accent-color)'};">
-						{evalMessage}
-					</strong>
-				</p>
-			</div>
-		</main>
-	{/if}
-
-	<!-- Registration Section -->
-	{#if currentSection === 'attendance'}
-		<main class="card" id="registrationForm">
-			<h3 class="part-header">Attendance Registration</h3>
-
-			<form
-				id="attendanceForm"
-				onsubmit={(e) => {
-					e.preventDefault();
-					submitAttendance(e);
-				}}
-			>
-				<div class="field-row">
-					<div class="field">
-						<label for="finalEventName">Selected Seminar</label>
-						<input
-							type="text"
-							id="finalEventName"
-							name="event_name"
-							readonly
-							class="read-only-box"
-							value={eventName}
-						/>
-					</div>
-					<div class="field">
-						<label for="displayTime">Time-In</label>
-						<input type="text" id="displayTime" name="time_in" readonly class="read-only-box" />
-					</div>
-				</div>
-
-				<div class="field">
-					<label for="titles">Full Name (Title, First, Middle, Last, Suffix)</label>
-					<div class="full-name-row">
-						<input type="text" name="title" placeholder="Title" list="titles" />
-						<datalist id="titles">
-							<option value="Mr."></option><option value="Ms."></option><option value="Mrs."
-							></option><option value="Dr."></option><option value="Engr."></option><option
-								value="Prof."
-							>
-							</option></datalist
-						>
-
-						<input
-							type="text"
-							id="firstName"
-							name="first_name"
-							placeholder="First Name *"
-							required
-						/>
-						<input type="text" name="middle_name" placeholder="Middle Name" />
-						<input type="text" name="last_name" placeholder="Last Name *" required />
-
-						<select name="suffix">
-							<option value="">Suffix</option>
-							<option value="Jr.">Jr.</option>
-							<option value="Sr.">Sr.</option>
-							<option value="II">II</option>
-							<option value="III">III</option>
-							<option value="IV">IV</option>
-						</select>
-					</div>
-				</div>
-
-				<div class="field-row">
-					<div class="field">
-						<label for="sex">Sex</label>
-						<select id="sex" name="sex" required>
-							<option value="">Select Sex</option>
-							<option value="M">Male</option>
-							<option value="F">Female</option>
-						</select>
-					</div>
-					<div class="field">
-						<label for="age">Age</label>
-						<input type="number" id="age" name="age" placeholder="Age" min="0" max="150" required />
-					</div>
-				</div>
-
-				<div class="field-row">
-					<div class="field">
-						<label for="employer">Employer</label>
-						<select id="employer" name="employer" required>
-							<option value="">Select Employer</option>
-							<option value="Private">Private</option>
-							<option value="Government">Government</option>
-							<option value="Self-Employed">Self-Employed</option>
-							<option value="Unemployed">Unemployed</option>
-							<option value="Student">Student</option>
-						</select>
-					</div>
-					<div class="field">
-						<label for="employment_status">Employment Status</label>
-						<select id="employment_status" name="employment_status" required>
-							<option value="">Select Status</option>
-							<option value="Gov't Employee">Government Employee</option>
-							<option value="Private Employee">Private Employee</option>
-							<option value="Self-Employed">Self-Employed</option>
-							<option value="None">None</option>
-						</select>
-					</div>
-				</div>
-
-				<div class="field-row">
-					<div class="field">
-						<label for="company">Company/Office</label>
-						<input type="text" id="company" name="company" placeholder="Organization name" />
-					</div>
-					<div class="field">
-						<label for="address">Complete Address</label>
-						<input type="text" id="address" name="address" placeholder="Address" required />
-					</div>
-				</div>
-
-				<div class="field">
-					<label for="email">Email Address</label>
-					<input type="email" id="email" name="email" placeholder="email@gmail.com" required />
-				</div>
-
-				<div class="field">
-					<label for="c1">Social Classification (Check all that apply)</label>
-					<div class="checkbox-group">
-						<div class="checkbox-item">
-							<input type="checkbox" name="classification[]" value="None" id="c1" /><label for="c1"
-								>None</label
-							>
-						</div>
-						<div class="checkbox-item">
-							<input type="checkbox" name="classification[]" value="Abled" id="c2" /><label for="c2"
-								>Abled</label
-							>
-						</div>
-						<div class="checkbox-item">
-							<input type="checkbox" name="classification[]" value="PWD" id="c3" /><label for="c3"
-								>PWD</label
-							>
-						</div>
-						<div class="checkbox-item">
-							<input type="checkbox" name="classification[]" value="4PS" id="c4" /><label for="c4"
-								>4PS</label
-							>
-						</div>
-						<div class="checkbox-item">
-							<input type="checkbox" name="classification[]" value="Youth" id="c5" /><label for="c5"
-								>Youth</label
-							>
-						</div>
-						<div class="checkbox-item">
-							<input type="checkbox" name="classification[]" value="Senior Citizen" id="c6" /><label
-								for="c6">Senior Citizen</label
-							>
-						</div>
-						<div class="checkbox-item">
-							<input type="checkbox" name="classification[]" value="IP" id="c7" /><label for="c7"
-								>IP</label
-							>
-						</div>
-						<div class="checkbox-item">
-							<input type="checkbox" name="classification[]" value="OFW" id="c8" /><label for="c8"
-								>OFW</label
-							>
-						</div>
-					</div>
-				</div>
-				<div class="field">
-					<input type="text" name="other_classification" placeholder="If others, please specify" />
-				</div>
-
-				<button type="submit" class="btn-primary">Confirm & Submit Attendance</button>
-				<button
-					type="button"
-					class="back-btn"
-					onclick={() => {
-						goBackToSelection();
-					}}>← Back</button
-				>
-			</form>
-		</main>
-	{/if}
-
-	<!-- Attendance Success Section -->
-	{#if currentSection === 'success'}
-		<main class="card" id="attendanceSuccessSection" style="text-align: center;">
-			<div style="margin-bottom: 24px;">
-				<div style="font-size: 48px; margin-bottom: 12px;">✅</div>
-				<h2 style="color: var(--accent-green); margin-bottom: 8px;">Attendance Recorded!</h2>
-				<p class="subtitle">You can now proceed to evaluation.</p>
-			</div>
-
-			<button
-				type="button"
-				class="btn-evaluation"
-				onclick={proceedToEvaluation}
-				style="margin-top: 12px;">📋 Proceed to Evaluation</button
-			>
-			<button
-				type="button"
-				class="btn-primary"
-				onclick={goBackToSelection}
-				style="margin-top: 12px;">Back to Menu</button
-			>
-		</main>
-	{/if}
-
-	<!-- Evaluation Section -->
-	{#if currentSection === 'evaluation'}
-		<main class="card" id="evaluationForm">
-			<form
-				id="evaluationFormElement"
-				onsubmit={(e) => {
-					e.preventDefault();
-					submitEvaluation(e);
-				}}
-			>
-				<div class="field">
-					<label for="evalEventName">Training Title</label>
-					<input
-						type="text"
-						id="evalEventName"
-						name="training_title"
-						readonly
-						class="read-only-box"
-						value={eventName}
-					/>
-				</div>
-
-				<div class="field">
-					<label for="evalVenue">Venue</label>
-					<input
-						type="text"
-						id="evalVenue"
-						name="venue"
-						readonly
-						class="read-only-box"
-						value="CCMS Lab 1, CNSC, Daet Camarines Norte"
-					/>
-				</div>
-
-				<div class="field-row">
-					<div class="field">
-						<label for="evalDate">Date</label>
-						<input
-							type="date"
-							id="evalDate"
-							name="evaluation_date"
-							value={new Date().toISOString().split('T')[0]}
-							required
-						/>
-					</div>
-					<div class="field">
-						<label for="evalParticipantName">Participant Name</label>
-						<input
-							type="text"
-							id="evalParticipantName"
-							name="participant_name"
-							readonly
-							class="read-only-box"
-							value={attendanceData.firstName
-								? `${attendanceData.firstName} ${attendanceData.lastName}`
-								: ''}
-						/>
-					</div>
-				</div>
-
-				<div
-					style="text-align: center; margin-top: 16px; font-size: 13px; color: var(--text-muted);"
-				>
-					Rating Scale: 5 (Excellent) to 1 (Poor)
-				</div>
-
-				<!-- PART 1: SPEAKER 1 -->
-				<h3 class="part-header">Part I. Evaluation of the conduct of the training</h3>
-
-				<div class="field" style="margin-bottom: 24px;">
-					<label for="sp1">1. Resource Speaker 1 (Name)</label>
-					<input
-						type="text"
-						id="sp1"
-						name="speaker1_name"
-						placeholder="Name of Speaker 1"
-						required
-					/>
-				</div>
-
-				<!-- Simplified Evaluation Cards for brevity in example, copying structure -->
-				<div class="eval-card">
-					<div class="eval-card-title">1.1 Achievement of session objectives</div>
-					<div class="rating-options">
-						{#each [5, 4, 3, 2, 1] as rate}
-							<label class="radio-pill"
-								><input type="radio" name="speaker1_q1" value={rate} required /><span>{rate}</span
-								></label
-							>
-						{/each}
-					</div>
-				</div>
-				<div class="eval-card">
-					<div class="eval-card-title">1.2 Relevance of topic covered</div>
-					<div class="rating-options">
-						{#each [5, 4, 3, 2, 1] as rate}
-							<label class="radio-pill"
-								><input type="radio" name="speaker1_q2" value={rate} required /><span>{rate}</span
-								></label
-							>
-						{/each}
-					</div>
-				</div>
-				<!-- ... (Include other fields similarly if needed, or cut short for this demo) ... -->
-
-				<button type="submit" class="btn-evaluation">Submit Evaluation</button>
-				<button type="button" class="back-btn" onclick={goBackToSelection}>← Back</button>
-			</form>
-		</main>
-	{/if}
-
-	<!-- Completed Message -->
-	{#if currentSection === 'completed'}
-		<main class="card" id="completedMessage" style="text-align: center; padding: 60px 20px;">
-			<div style="margin-bottom: 30px;">
-				<div style="font-size: 60px; margin-bottom: 16px;">✅</div>
-				<h2 style="color: var(--accent-green); margin-bottom: 8px; font-size: 24px;">
-					Response Recorded
-				</h2>
-				<p class="subtitle">Your evaluation has been successfully submitted.</p>
-			</div>
-
-			<div
-				style="background: rgba(16, 185, 129, 0.1); border: 1px solid var(--accent-green); border-radius: 8px; padding: 20px; margin-bottom: 24px;"
-			>
-				<p style="color: var(--text-main); font-weight: 500; margin-bottom: 8px;">
-					Thank you for your feedback!
-				</p>
-				<p class="subtitle">This response has been locked and cannot be modified.</p>
-			</div>
-
-			<button
-				class="btn-primary"
-				onclick={() => window.location.reload()}
-				style="background: var(--accent-color);">Start New Session</button
-			>
-		</main>
-	{/if}
-</div>
-
-<!-- Modal Dialog -->
-{#if showModal}
-	<div class="modal-overlay active">
-		<div class="modal-dialog">
-			<div class="modal-icon">{modalIcon}</div>
-			<div class="modal-title" style={modalType === 'error' ? 'color: #d32f2f;' : ''}>
-				{modalTitle}
-			</div>
-			<div class="modal-message">{modalMessage}</div>
+			
+			<h3>Reset Profile?</h3>
+			<p>This will remove the current registered profile from this device. Are you sure you want to register a new guest?</p>
+			
 			<div class="modal-actions">
-				<button class="modal-btn-primary" onclick={() => (showModal = false)}>OK</button>
+				<button class="btn-secondary" onclick={closeDeleteModal}>Cancel</button>
+				<button 
+					class="btn-primary" 
+					style={deleteCountdown > 0 ? '' : 'background: var(--danger); border-color: var(--danger);'}
+					disabled={deleteCountdown > 0} 
+					onclick={deleteProfile}
+				>
+					{deleteCountdown > 0 ? `Yes, Delete (${deleteCountdown}s)` : 'Yes, Delete'}
+				</button>
 			</div>
+			
 		</div>
 	</div>
 {/if}
+
+<div class="kiosk-container">
+	<header class="app-header">
+		<div class="logo-container">
+			<div class="logo-box"><img src="/assets/logo_cnsc.png" alt="CNSC Logo" /></div>
+			<div class="logo-box"><img src="/assets/ccms_logo.png" alt="CCMS Logo" /></div>
+		</div>
+		<div class="poster-container animation-pop-up">
+			<img src="/assets/theme.jpg" alt="Seminar Theme Poster" />
+		</div>
+	</header>
+
+	<main class="glass-card animation-pop-up" style="animation-delay: 0.1s;">
+		{#if event}
+			<div class="event-banner">
+				<span class="pulse-badge">Live Event</span>
+				<h1>{event.eventName}</h1>
+				<p class="venue-text">{@render IconMapPin()} {event.venue || 'Main Hall'}</p>
+			</div>
+		{:else}
+			<div class="event-banner">
+				<span class="pulse-badge" style="background: rgba(255,255,255,0.1); color: var(--text-muted); border-color: rgba(255,255,255,0.2);">Standby</span>
+				<h1>DTI Seminar & Workshop</h1>
+				<p class="venue-text">Welcome to the portal</p>
+			</div>
+		{/if}
+
+		<div class="action-grid">
+			
+			<a 
+				href={localGuestId ? "#" : (attStatus === 'open' ? "/register" : "#")} 
+				class="action-card"
+				class:primary-action={!localGuestId && attStatus === 'open'}
+				class:completed-action={!!localGuestId}
+				class:locked={!localGuestId && attStatus !== 'open'}
+				onclick={(e) => { 
+					if (localGuestId) { e.preventDefault(); showDeleteModal = true; } 
+					else if (attStatus !== 'open') { e.preventDefault(); }
+				}}
+			>
+				<div class="step-indicator">Step 1</div>
+				<div class="icon">
+					{#if localGuestId} {@render IconCheckCircle()}
+					{:else if attStatus === 'open'} {@render IconUserPlus()}
+					{:else if attStatus === 'not_started'} {@render IconClock()}
+					{:else} {@render IconLock()}
+					{/if}
+				</div>
+				
+				<h2>Walk-In Registration</h2>
+				
+				{#if localGuestId}
+					<p>Profile saved on this device. Click here to reset or delete.</p>
+					<span class="cta-text text-green">Registered &check;</span>
+				{:else if attStatus === 'open'}
+					<p>New guest? Create your profile and log your arrival.</p>
+					<span class="cta-text text-accent">Register Now &rarr;</span>
+				{:else if attStatus === 'not_started'}
+					<p>{attMessage}</p>
+					<span class="cta-text text-muted">Not Yet Open</span>
+				{:else}
+					<p>{attMessage}</p>
+					<span class="cta-text text-muted">Currently Closed</span>
+				{/if}
+			</a>
+
+			<a 
+				href={localGuestId && !isCheckedIn && attStatus === 'open' ? "/attendance" : "#"} 
+				class="action-card"
+				class:primary-action={!!localGuestId && !isCheckedIn && attStatus === 'open'}
+				class:secondary-action={!localGuestId || attStatus !== 'open'}
+				class:completed-action={isCheckedIn}
+				class:locked={!localGuestId || (attStatus !== 'open' && !isCheckedIn)}
+				onclick={(e) => { if(!localGuestId || isCheckedIn || attStatus !== 'open') e.preventDefault(); }}
+			>
+				<div class="step-indicator">Step 2</div>
+				<div class="icon">
+					{#if isCheckedIn} {@render IconCheckCircle()}
+					{:else if !localGuestId} {@render IconLock()}
+					{:else if attStatus === 'open'} {@render IconUserCheck()}
+					{:else if attStatus === 'not_started'} {@render IconClock()}
+					{:else} {@render IconLock()}
+					{/if}
+				</div>
+				
+				<h2>Record Attendance</h2>
+				
+				{#if isCheckedIn}
+					<p>You have successfully logged your attendance for today's event.</p>
+					<span class="cta-text text-green">Checked In &check;</span>
+				{:else if !localGuestId}
+					<p>Please complete Step 1 (Registration) first to unlock attendance.</p>
+					<span class="cta-text text-muted">Requires Step 1</span>
+				{:else if attStatus === 'open'}
+					<p>You are registered! Tap here to officially check in.</p>
+					<span class="cta-text text-accent">Enter Portal &rarr;</span>
+				{:else if attStatus === 'not_started'}
+					<p>{attMessage}</p>
+					<span class="cta-text text-muted">Not Yet Open</span>
+				{:else}
+					<p>{attMessage}</p>
+					<span class="cta-text text-muted">Currently Closed</span>
+				{/if}
+			</a>
+
+			<a 
+				href={isCheckedIn && isEvalOpen ? "/evaluation" : "#"} 
+				class="action-card" 
+				class:primary-action={isCheckedIn && isEvalOpen}
+				class:secondary-action={!isCheckedIn || !isEvalOpen}
+				class:locked={!isCheckedIn || !isEvalOpen}
+				onclick={(e) => { if(!isCheckedIn || !isEvalOpen) e.preventDefault(); }}
+			>
+				<div class="step-indicator">Step 3</div>
+				<div class="icon">
+					{#if !isCheckedIn || !isEvalOpen} {@render IconLock()}
+					{:else} {@render IconFileEdit()}
+					{/if}
+				</div>
+
+				<h2>Submit Evaluation</h2>
+				{#if !isCheckedIn}
+					<p>Please complete Step 2 (Attendance) first to unlock the evaluation.</p>
+					<span class="cta-text text-muted">Requires Step 2</span>
+				{:else if isEvalOpen}
+					<p>You are all set! Share your feedback to complete the seminar.</p>
+					<span class="cta-text text-accent">Start Evaluation &rarr;</span>
+				{:else}
+					<p>{evalMessage}</p>
+					<span class="cta-text text-muted">Currently Closed</span>
+				{/if}
+			</a>
+		</div>
+	</main>
+</div>
+
+{#snippet IconCheckCircle()}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+	<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+	<polyline points="22 4 12 14.01 9 11.01"/>
+</svg>
+{/snippet}
+
+{#snippet IconUserPlus()}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+{/snippet}
+
+{#snippet IconUserCheck()}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
+{/snippet}
+
+{#snippet IconFileEdit()}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10.4 12.6a2 2 0 1 1 3 3L8 21l-4 1 1-4Z"/></svg>
+{/snippet}
+
+{#snippet IconClock()}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+{/snippet}
+
+{#snippet IconLock()}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+{/snippet}
+
+{#snippet IconWarning()}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+	<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+	<line x1="12" x2="12" y1="9" y2="13"/>
+	<line x1="12" x2="12.01" y1="17" y2="17"/>
+</svg>
+{/snippet}
+
+{#snippet IconMapPin()}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem; vertical-align: middle; margin-right: 0.25rem;">
+	<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+	<circle cx="12" cy="10" r="3"/>
+</svg>
+{/snippet}
 
 <style>
 	@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -587,72 +300,123 @@
 		--bg-color: #061224;
 		--card-bg: #0b1d3a;
 		--card-border: #1e365d;
-		--input-bg: #040c17;
-		--input-border: #2a436e;
 		--text-main: #f8fafc;
 		--text-muted: #94a3b8;
-		--accent-color: #ffd600;
-		--accent-hover: #e5c000;
-		--btn-text: #000000;
+		--accent-color: #ffd600; 
 		--accent-green: #10b981;
-		--accent-green-hover: #059669;
+		--primary: #8B0021; 
+		--danger: #ef4444;
+		--border-subtle: rgba(148, 163, 184, 0.1);
 	}
 
-	/* Wrap details in global or scoped */
 	:global(body) {
 		margin: 0;
 		padding: 0;
-		font-family:
-			'Inter',
-			-apple-system,
-			BlinkMacSystemFont,
-			sans-serif;
-		background: #061224;
+		font-family: 'Inter', -apple-system, sans-serif;
+		background: var(--bg-color);
 		color: var(--text-main);
 		min-height: 100vh;
+	}
+
+	/* Modal Styling */
+	.modal-overlay {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.8);
+		backdrop-filter: blur(8px);
+		z-index: 1000;
 		display: flex;
-		flex-direction: column;
+		justify-content: center;
 		align-items: center;
+		padding: 1rem;
 	}
 
-	.app-container {
-		width: 100%;
-		max-width: 800px;
-		padding: 24px 16px;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-	}
-
-	* {
-		box-sizing: border-box;
-	}
-
-	/* --- Header & Logos --- */
-	.app-header {
+	.modal-card {
+		background: var(--card-bg);
+		border: 1px solid var(--card-border);
+		padding: 2.5rem;
+		border-radius: 20px;
+		max-width: 450px;
 		width: 100%;
 		text-align: center;
-		margin-bottom: 24px;
+		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+	}
+
+	.modal-icon {
+		font-size: 3rem;
+		margin-bottom: 1rem;
+	}
+
+	.text-danger { color: var(--danger); }
+
+	.modal-card h3 {
+		margin: 0 0 1rem 0;
+		font-size: 1.5rem;
+		color: var(--text-main);
+	}
+
+	.modal-card p {
+		color: var(--text-muted);
+		line-height: 1.5;
+		margin-bottom: 2rem;
+	}
+
+	.modal-actions {
+		display: flex;
+		gap: 1rem;
+		justify-content: center;
+	}
+
+	.btn-secondary, .btn-primary {
+		padding: 0.8rem 1.5rem;
+		border-radius: 8px;
+		font-weight: 600;
+		cursor: pointer;
+		border: none;
+		transition: all 0.2s;
+	}
+
+	.btn-secondary {
+		background: transparent;
+		border: 1px solid var(--border-subtle);
+		color: var(--text-muted);
+	}
+
+	.btn-secondary:hover {
+		background: rgba(255,255,255,0.05);
+		color: var(--text-main);
+	}
+
+	.btn-primary {
+		color: white;
+	}
+
+	/* Kiosk Styling */
+	.kiosk-container {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		min-height: 90vh;
+		padding: 2rem 1rem;
+		max-width: 1000px; 
+		margin: 0 auto;
+	}
+
+	.app-header {
+		margin-bottom: 2rem;
+		width: 100%;
 	}
 
 	.logo-container {
 		display: flex;
+		gap: 1.5rem;
 		justify-content: center;
-		align-items: center;
-		gap: 24px;
-		margin-bottom: 24px;
 	}
 
 	.logo-box {
-		width: 85px;
-		height: 85px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: var(--accent-color);
-		font-size: 12px;
-		font-weight: 700;
-		text-transform: uppercase;
+		width: 75px;
+		height: 75px;
 	}
 
 	.logo-box img {
@@ -661,15 +425,14 @@
 		object-fit: contain;
 	}
 
-	/* --- Poster Banner --- */
 	.poster-container {
 		width: 100%;
-		border-radius: 12px;
+		margin-top: 2rem;
+		border-radius: 16px;
 		overflow: hidden;
-		border: 1px solid var(--card-border);
-		box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6);
-		margin-bottom: 24px;
-		background: var(--card-bg);
+		border: 1px solid var(--border-subtle);
+		box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.5);
+		background: rgba(11, 16, 32, 0.4);
 	}
 
 	.poster-container img {
@@ -679,379 +442,219 @@
 		object-fit: cover;
 	}
 
-	/* --- Main Layout --- */
-	.card {
-		background: transparent;
+	.glass-card {
+		background: rgba(11, 16, 32, 0.6);
+		backdrop-filter: blur(16px);
+		border: 1px solid var(--border-subtle);
+		border-radius: 24px;
+		padding: 2.5rem;
 		width: 100%;
-		max-width: 800px;
+		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 	}
 
-	h2 {
-		font-size: 20px;
-		font-weight: 600;
-		margin-bottom: 8px;
+	.event-banner {
+		text-align: center;
+		margin-bottom: 3rem;
+		padding-bottom: 2rem;
+		border-bottom: 1px solid var(--border-subtle);
+	}
+
+	.pulse-badge {
+		display: inline-block;
+		background: rgba(16, 185, 129, 0.15);
+		color: var(--accent-green);
+		border: 1px solid rgba(16, 185, 129, 0.3);
+		padding: 0.25rem 0.75rem;
+		border-radius: 20px;
+		font-size: 0.8rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 1px;
+		margin-bottom: 1rem;
+	}
+
+	.event-banner h1 {
+		font-size: 1.8rem;
 		color: var(--text-main);
+		margin: 0 0 0.5rem 0;
+		line-height: 1.3;
 	}
 
-	.subtitle {
+	.venue-text {
 		color: var(--text-muted);
-		font-size: 14px;
-		margin-bottom: 24px;
-		line-height: 1.5;
+		font-size: 1rem;
+		margin: 0;
 	}
 
-	/* --- Forms & Inputs --- */
-	.field {
-		margin-bottom: 16px;
-	}
-
-	.field-row {
+	.action-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-		gap: 16px;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 1.5rem;
 	}
 
-	.full-name-row {
-		display: grid;
-		grid-template-columns: 80px 1fr 1fr 1fr 80px;
-		gap: 10px;
-	}
-
-	@media (max-width: 768px) {
-		.full-name-row {
+	@media (max-width: 850px) {
+		.action-grid {
 			grid-template-columns: 1fr;
 		}
 	}
 
-	label {
-		display: block;
-		color: var(--text-main);
-		font-size: 13px;
-		font-weight: 500;
-		margin-bottom: 8px;
+	.action-card {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		padding: 2rem 1.5rem;
+		border-radius: 16px;
+		text-decoration: none;
+		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+		overflow: hidden;
 	}
 
-	input[type='text'],
-	input[type='number'],
-	input[type='email'],
-	input[type='date'],
-	select,
-	textarea {
-		width: 100%;
-		background: rgba(4, 12, 23, 0.5);
-		border: 1px solid var(--input-border);
-		border-radius: 8px;
-		padding: 12px 14px;
-		color: var(--text-main);
-		font-size: 14px;
-		transition: all 0.2s ease;
-		font-family: inherit;
+	/* PRIMARY: Solid Maroon Gradient */
+	.primary-action {
+		background: linear-gradient(135deg, #8B0021 0%, #5c0016 100%);
+		border: 1px solid #b81433;
+		box-shadow: 0 4px 15px rgba(139, 0, 33, 0.3);
 	}
 
-	input:focus,
-	select:focus,
-	textarea:focus {
-		outline: none;
+	.primary-action:hover:not(.locked) {
+		background: linear-gradient(135deg, #a80028 0%, #7a001d 100%);
 		border-color: var(--accent-color);
+		transform: translateY(-4px);
+		box-shadow: 0 10px 25px rgba(139, 0, 33, 0.5), 0 0 15px rgba(255, 214, 0, 0.3);
 	}
 
-	.read-only-box {
-		background: rgba(4, 12, 23, 0.8) !important;
-		color: var(--accent-color) !important;
-		cursor: not-allowed;
-		font-family: monospace;
-		font-size: 15px !important;
+	.primary-action p, 
+	.primary-action .step-indicator,
+	.primary-action .cta-text {
+		color: rgba(255, 255, 255, 0.85) !important;
 	}
 
-	/* --- Checkboxes --- */
-	.checkbox-group {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-		gap: 12px;
-		margin-top: 10px;
-	}
-
-	.checkbox-item {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		color: var(--text-main);
-		font-size: 14px;
-	}
-
-	.checkbox-item input[type='checkbox'] {
-		width: 18px;
-		height: 18px;
-		accent-color: var(--accent-color);
-	}
-
-	/* --- NEW EVALUATION CARD UI --- */
-	.part-header {
-		color: var(--accent-color);
-		font-size: 16px;
-		font-weight: 700;
-		margin: 40px 0 16px 0;
-		text-transform: uppercase;
-		border-bottom: 1px solid var(--card-border);
-		padding-bottom: 8px;
-		letter-spacing: 0.5px;
-	}
-
-	.eval-card {
-		border: 1px solid var(--input-border);
-		border-radius: 12px;
-		padding: 16px;
-		margin-bottom: 16px;
-		background: rgba(4, 12, 23, 0.4);
-	}
-
-	.eval-card-title {
-		color: var(--text-main);
-		font-size: 14px;
-		font-weight: 600;
-		margin-bottom: 4px;
-	}
-
-	.eval-card-subtitle {
-		color: var(--text-muted);
-		font-size: 12px;
-		margin-bottom: 16px;
-		font-style: italic;
-	}
-
-	.rating-options {
-		display: flex;
-		gap: 8px;
-		justify-content: space-between;
-	}
-
-	.radio-pill {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 6px;
-		padding: 10px 0;
-		border: 1px solid var(--input-border);
-		border-radius: 24px;
-		cursor: pointer;
-		font-size: 14px;
-		font-weight: 500;
-		color: var(--text-muted);
-		transition: all 0.2s ease;
-		background: rgba(255, 255, 255, 0.02);
-		-webkit-tap-highlight-color: transparent;
-	}
-
-	.radio-pill input[type='radio'] {
-		display: none;
-	}
-
-	.radio-pill:has(input:checked) {
-		background: var(--accent-color);
-		color: var(--btn-text);
-		border-color: var(--accent-color);
-		font-weight: 700;
-		box-shadow: 0 4px 10px rgba(255, 214, 0, 0.3);
-	}
-
-	/* --- Buttons --- */
-	.btn-primary,
-	.btn-evaluation,
-	.btn-attendance {
-		width: 100%;
-		background: var(--accent-color);
-		color: var(--btn-text);
-		border: none;
-		border-radius: 8px;
-		padding: 16px;
-		font-size: 15px;
-		font-weight: 700;
-		cursor: pointer;
-		transition: background 0.2s;
-		margin-top: 24px;
-		text-transform: uppercase;
-		letter-spacing: 0.5px;
-	}
-
-	.btn-primary:hover {
-		background: var(--accent-hover);
-	}
-
-	.btn-evaluation {
-		background: var(--accent-green);
+	.primary-action h2 {
 		color: #ffffff;
 	}
-	.btn-evaluation:hover {
-		background: var(--accent-green-hover);
+
+	/* SECONDARY: Glassmorphism */
+	.secondary-action {
+		background: rgba(255, 255, 255, 0.03);
+		border: 1px solid rgba(255, 255, 255, 0.08);
 	}
 
-	.back-btn {
-		background: transparent;
-		color: var(--text-muted);
-		border: 1px solid var(--input-border);
-		border-radius: 8px;
-		padding: 14px;
-		font-size: 14px;
-		font-weight: 500;
+	.secondary-action:hover:not(.locked) {
+		background: rgba(255, 255, 255, 0.06);
+		transform: translateY(-4px);
+		border-color: rgba(255, 255, 255, 0.15);
+	}
+
+	/* COMPLETED: Soft Green / Muted State */
+	.completed-action {
+		background: rgba(16, 185, 129, 0.05);
+		border: 1px solid rgba(16, 185, 129, 0.2);
 		cursor: pointer;
-		width: 100%;
-		transition: all 0.2s;
-		margin-top: 16px;
-	}
-	.back-btn:hover {
-		background: rgba(255, 255, 255, 0.05);
-		color: var(--text-main);
 	}
 
-	@media (max-width: 640px) {
-		/* Prevent zoom on iOS */
-		input[type='text'],
-		input[type='number'],
-		input[type='email'],
-		input[type='date'],
-		select,
-		textarea {
-			font-size: 16px;
-		}
-
-		.proceed-btn {
-			padding: 16px 24px;
-			font-size: 16px;
-			width: 100%;
-		}
-
-		.header-title {
-			font-size: 1.5rem;
-		}
-
-		.logo-box {
-			width: 60px;
-			height: 60px;
-		}
-	}
-
-	/* --- Main Action Button --- */
-	.main-action {
-		margin: 32px 0;
-		text-align: center;
-	}
-
-	.proceed-btn {
-		background: var(--accent-green);
-		color: white;
-		border: none;
-		border-radius: 50px;
-		padding: 20px 40px;
-		font-size: 20px;
-		font-weight: 800;
-		cursor: pointer;
-		transition: all 0.3s ease;
-		text-transform: uppercase;
-		letter-spacing: 2px;
-		box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
-		width: 100%;
-		max-width: 400px;
-		margin: 0 auto;
-	}
-
-	.proceed-btn:hover {
-		background: var(--accent-green-hover);
+	.completed-action:hover {
+		background: rgba(16, 185, 129, 0.08);
+		border-color: rgba(16, 185, 129, 0.4);
 		transform: translateY(-2px);
-		box-shadow: 0 15px 30px rgba(16, 185, 129, 0.4);
+	}
+	
+	.completed-action .icon svg {
+		color: var(--accent-green);
 	}
 
-	.proceed-btn:active {
-		transform: translateY(0);
+	.text-green { color: var(--accent-green); }
+
+	/* LOCKED STATE */
+	.action-card.locked {
+		opacity: 0.6;
+		cursor: not-allowed;
+		filter: grayscale(80%);
+		border-color: rgba(148, 163, 184, 0.1);
 	}
 
-	.time-indicator {
-		background: rgba(255, 214, 0, 0.1);
-		border: 1px solid var(--accent-color);
-		border-radius: 8px;
-		padding: 12px;
-		margin: 20px 0;
-		text-align: center;
-		font-size: 14px;
+	.action-card.locked .text-accent {
+		color: var(--text-muted);
 	}
 
-	.time-indicator .highlight {
-		color: var(--accent-color);
+	.step-indicator {
+		position: absolute;
+		top: 1rem;
+		right: 1rem;
+		font-size: 0.75rem;
 		font-weight: 700;
+		text-transform: uppercase;
+		color: var(--text-muted);
+		letter-spacing: 1px;
 	}
 
-	/* --- Modal Dialog --- */
-	.modal-overlay {
-		display: none;
-		position: fixed;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		background: rgba(0, 0, 0, 0.7);
-		z-index: 1000;
-		align-items: center;
+	.icon {
+		margin-bottom: 1.25rem;
+		display: inline-flex;
+	}
+
+	.icon svg {
+		width: 42px;
+		height: 42px;
+		color: var(--text-main);
+		transition: color 0.3s ease;
+	}
+	
+	.primary-action:not(.locked) .icon svg {
+		color: var(--accent-color);
+	}
+
+	.action-card h2 {
+		color: var(--text-main);
+		font-size: 1.25rem;
+		margin: 0 0 0.5rem 0;
+	}
+
+	.action-card p {
+		color: var(--text-muted);
+		font-size: 0.9rem;
+		line-height: 1.4;
+		margin: 0 0 1.5rem 0;
+		flex-grow: 1;
+	}
+
+	.cta-text {
+		font-weight: 600;
+		font-size: 0.95rem;
+	}
+
+	.text-accent {
+		color: var(--accent-color);
+	}
+
+	.text-muted {
+		color: var(--text-muted);
+	}
+
+	.animation-pop-up {
+		animation: popUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+		animation-fill-mode: both;
+	}
+	.animation-fade-in {
+		animation: fadeIn 0.3s ease;
+	}
+
+	@keyframes popUp {
+		from { opacity: 0; transform: scale(0.95) translateY(20px); }
+		to { opacity: 1; transform: scale(1) translateY(0); }
+	}
+	@keyframes fadeIn {
+		from { opacity: 0; }
+		to { opacity: 1; }
+	}
+	.modal-icon {
+		margin-bottom: 1rem;
+		display: flex;
 		justify-content: center;
 	}
 
-	.modal-overlay.active {
-		display: flex;
-	}
-
-	.modal-dialog {
-		background: var(--card-bg);
-		border: 1px solid var(--card-border);
-		border-radius: 16px;
-		padding: 32px;
-		max-width: 400px;
-		width: 90%;
-		box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
-		text-align: center;
-	}
-
-	.modal-icon {
-		font-size: 48px;
-		margin-bottom: 16px;
-	}
-
-	.modal-title {
-		color: var(--accent-color);
-		font-size: 18px;
-		font-weight: 700;
-		margin-bottom: 12px;
-		text-transform: uppercase;
-	}
-
-	.modal-message {
-		color: var(--text-main);
-		font-size: 14px;
-		line-height: 1.6;
-		margin-bottom: 24px;
-		white-space: pre-line;
-	}
-
-	.modal-actions {
-		display: flex;
-		gap: 12px;
-	}
-
-	.modal-actions button {
-		flex: 1;
-		padding: 12px 16px;
-		border: none;
-		border-radius: 8px;
-		font-size: 14px;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all 0.2s;
-	}
-
-	.modal-btn-primary {
-		background: var(--accent-color);
-		color: var(--btn-text);
-	}
-
-	.modal-btn-primary:hover {
-		background: var(--accent-hover);
+	/* This strictly controls the SVG size so it doesn't get massive */
+	.modal-icon svg {
+		width: 48px; 
+		height: 48px;
 	}
 </style>
