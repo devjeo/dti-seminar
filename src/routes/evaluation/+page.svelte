@@ -23,7 +23,7 @@
 	// Evaluation Form Data
 	let participantName = $state.raw('');
 	let trainingTitle = $state.raw(
-		'Empowering Collaboration, Active Participation, and Professional Engagement Through Digital Tools'
+		'Creatives Awareness & Workshop Session for Domain Players'
 	);
 	let venue = $state.raw('CCMS Lab 2, UCN, Daet, Camarines Norte');
 	let date = $state.raw(new Date().toISOString().split('T')[0]);
@@ -210,6 +210,17 @@
 		}
 
 		// Make sure every tab has a speaker assigned
+		const evaluatedSpeakerIds = tabs.map(t => t.speakerId).filter(Boolean);
+		const missingSpeakers = availableSpeakers.filter(s => !evaluatedSpeakerIds.includes(s.id));
+
+		if (missingSpeakers.length > 0) {
+			const missingNames = missingSpeakers.map(s => s.name).join(', ');
+			formMessage = `Please evaluate all speakers before submitting. Missing: ${missingNames}.`;
+			isSubmitting = false;
+			return;
+		}
+
+		// Make sure no blank tabs exist
 		const unassignedTab = tabs.find(t => !t.speakerId);
 		if (unassignedTab) {
 			formMessage = 'Please assign a speaker to every open tab, or close unused tabs.';
@@ -289,9 +300,13 @@
 		ratings: Record<string, string>;
 	};
 
-	let tabs = $state<SpeakerTab[]>([
-		{ id: generateSafeId(), speakerId: '', ratings: {} }
-	]);
+	let tabs = $state<SpeakerTab[]>(
+		availableSpeakers.map(speaker => ({
+			id: generateSafeId(),
+			speakerId: speaker.id,
+			ratings: {}
+		}))
+	);
 	
 	let activeTabId = $state(tabs[0].id);
 	let activeTab = $derived(tabs.find(t => t.id === activeTabId));
@@ -366,7 +381,7 @@
 <header class="dti-header">
 	<div class="dti-title">
 		<p class="dti-kicker">Seminar & Workshop</p>
-		<h1>Empowering Collaboration, Active Participation, and Professional Engagement Through Digital Tools</h1>
+		<h1>Creatives Awareness & Workshop Session for Domain Players</h1>
 		<p class="dti-subtitle">DTI Seminar &amp; Workshop &mdash; Evaluation</p>
 	</div>
 </header>

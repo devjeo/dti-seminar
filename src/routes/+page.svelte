@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	
 	let { data } = $props();
-	const event = data?.event || null;
+	const event = $derived(data?.event || null);
 
 	// Schedule States
 	let attStatus = $state('checking'); 
@@ -164,7 +164,7 @@
 					{/if}
 				</div>
 				
-				<h2>Walk-In Registration</h2>
+				<h2>Registration</h2>
 				
 				{#if localGuestId}
 					<p>Profile saved on this device. Click here to reset or delete.</p>

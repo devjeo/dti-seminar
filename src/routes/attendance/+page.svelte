@@ -84,7 +84,7 @@
 <header class="dti-header">
 	<div class="dti-title">
 		<p class="dti-kicker">Seminar & Workshop</p>
-		<h1>Empowering Collaboration, Active Participation, and Professional Engagement Through Digital Tools</h1>
+		<h1>Creatives Awareness & Workshop Session for Domain Players</h1>
 		<p class="dti-subtitle">DTI Seminar &amp; Workshop &mdash; Attendance</p>
 	</div>
 </header>
