@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	
@@ -198,39 +198,91 @@
 		}
 	});
 
+	// Helper function to auto-advance tabs
+	function checkAndAdvanceTab() {
+		// 300ms delay so the user can see their final click register before it switches
+		setTimeout(async () => {
+			await tick(); // Ensure state bindings are fully updated
+			if (activeTab && isTabComplete(activeTab)) {
+				const currentIndex = tabs.findIndex(t => t.id === activeTabId);
+				// Find the next incomplete tab
+				const nextIncomplete = tabs.find((t, i) => i > currentIndex && !isTabComplete(t));
+				
+				if (nextIncomplete) {
+					activeTabId = nextIncomplete.id;
+					document.getElementById('evaluation-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				}
+			}
+		}, 300);
+	}
+
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
 		formMessage = '';
 		isSubmitting = true;
 
+		// 1. Basic Fields Check
 		if (!participantName || !trainingTitle || !venue || !date) {
-			formMessage = 'Please complete all required fields.';
+			formMessage = 'Please complete all required top fields.';
 			isSubmitting = false;
+			window.scrollTo({ top: 0, behavior: 'smooth' });
 			return;
 		}
 
-		// Make sure every tab has a speaker assigned
+		// 2. Unassigned Tab Check
+		const unassignedTab = tabs.find(t => !t.speakerId);
+		if (unassignedTab) {
+			activeTabId = unassignedTab.id; // Auto-switch to problematic tab
+			formMessage = 'Please assign a speaker to every open tab, or close unused tabs.';
+			isSubmitting = false;
+			document.getElementById('evaluation-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			return;
+		}
+
+		// 3. Missing Speakers Check
 		const evaluatedSpeakerIds = tabs.map(t => t.speakerId).filter(Boolean);
 		const missingSpeakers = availableSpeakers.filter(s => !evaluatedSpeakerIds.includes(s.id));
-
 		if (missingSpeakers.length > 0) {
 			const missingNames = missingSpeakers.map(s => s.name).join(', ');
 			formMessage = `Please evaluate all speakers before submitting. Missing: ${missingNames}.`;
 			isSubmitting = false;
+			document.getElementById('evaluation-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 			return;
 		}
 
-		// Make sure no blank tabs exist
-		const unassignedTab = tabs.find(t => !t.speakerId);
-		if (unassignedTab) {
-			formMessage = 'Please assign a speaker to every open tab, or close unused tabs.';
+		// 4. Incomplete Tab Check
+		const incompleteTab = tabs.find(t => !isTabComplete(t));
+		if (incompleteTab) {
+			activeTabId = incompleteTab.id; // Auto-switch to incomplete tab
+			formMessage = 'Please answer all rating items for this speaker.';
 			isSubmitting = false;
+			document.getElementById('evaluation-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 			return;
 		}
 
-		if (answeredCount < totalItems) {
-			formMessage = 'Please answer all rating items (1–5).';
+		// 5. Service Items Check
+		const missingService = serviceItems.find(item => !ratings[item.key]);
+		if (missingService) {
+			formMessage = 'Please answer all rating items in Quality & Timeliness of Service.';
 			isSubmitting = false;
+			document.getElementById('service-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			return;
+		}
+
+		// 6. Part 2 Items Check
+		const missingPart2 = itemsPart2.find(item => !ratings[item.key]);
+		if (missingPart2) {
+			formMessage = 'Please answer all rating items in Part II. Other particulars.';
+			isSubmitting = false;
+			document.getElementById('part2-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			return;
+		}
+
+		// 7. Open-ended Questions Check
+		if (!q1 || !q2 || !q3) {
+			formMessage = 'Please answer all open-ended questions.';
+			isSubmitting = false;
+			document.getElementById('questions-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 			return;
 		}
 
@@ -245,16 +297,15 @@
 				};
 			});
 
-			// 2. Build the payload. 
-			// 'ratings' here automatically contains both serviceItems and itemsPart2!
+			// 2. Build the payload.
 			const data = {
 				guestId,
 				participantName,
 				trainingTitle,
 				venue,
 				date,
-				speakerEvaluations, // Sends the extracted tabs
-				generalRatings: ratings, // Sends Part 2 AND Service ratings
+				speakerEvaluations,
+				generalRatings: ratings,
 				q1,
 				q2,
 				q3,
@@ -422,7 +473,12 @@
 			</div>
 		</div>
 
-		<form class="form" onsubmit={handleSubmit}>
+		<form 
+			class="form" 
+			onsubmit={handleSubmit} 
+			oninput={() => { if (formMessage) formMessage = ''; }} 
+			onchange={() => { if (formMessage) formMessage = ''; }}
+		>
 			<section class="form-section">
 				<h3>Participant / Beneficiary</h3>
 				<div class="field">
@@ -459,7 +515,7 @@
 			</section>
 
 			<section class="form-section">
-				<div class="evaluation-container">
+				<div class="evaluation-container" id="evaluation-tabs">
 				<!-- STICKY TAB BAR -->
 				<div class="tabs-header">
 					{#each tabs as tab, index}
@@ -534,11 +590,13 @@
 										<div class="rating-group">
 											{#each [1, 2, 3, 4, 5] as v}
 												<label class="rating-pill rating-val-{v}">
+													<!-- ADD onchange={checkAndAdvanceTab} HERE -->
 													<input
 														type="radio"
 														name={`rating_${activeTab.id}_${item.key}`}
 														value={String(v)}
 														bind:group={activeTab.ratings[item.key]}
+														onchange={checkAndAdvanceTab}
 													/>
 													{v}
 												</label>
@@ -553,7 +611,7 @@
 					</div>
 				{/if}
 			</div>
-				<h4 class="form-subtitle" style="margin-top: 2rem; margin-bottom: 1rem; font-weight: 600;">
+				<h4 class="form-subtitle" id="service-section" style="margin-top: 2rem; margin-bottom: 1rem; font-weight: 600;">
 					Quality & Timeliness of Service
 				</h4>
 				<div class="matrix">
@@ -582,7 +640,7 @@
 				</div>
 			</section>
 
-			<section class="form-section">
+			<section class="form-section" id="part2-section">
 				<h3>Part II. Other particulars</h3>
 				<div class="matrix">
 					{#each itemsPart2 as item}
@@ -610,7 +668,7 @@
 				</div>
 			</section>
 
-			<section class="form-section">
+			<section class="form-section" id="questions-section">
 				<h3>Open-ended questions</h3>
 				<div class="field">
 					<label for="q1">What was the most interesting thing you learned in this training?</label>

@@ -4,6 +4,10 @@
 	let { data } = $props();
 	const event = $derived(data?.event || null);
 
+	const eventState = $derived(data?.eventState || 'none'); // 'ongoing', 'upcoming', 'past', 'none'
+
+	const isOngoing = $derived(eventState === 'ongoing');
+
 	// Schedule States
 	let attStatus = $state('checking'); 
 	let attMessage = $state('Checking schedule...');
@@ -65,15 +69,24 @@
 			isCheckedIn = true;
 		}
 
-		// 2. Fetch system schedule
+		// 2. Fetch system schedule and apply the event date lock
 		try {
 			const res = await fetch('/api/status');
 			if (res.ok) {
 				const statusData = await res.json();
-				attStatus = statusData.attendance.status;
-				attMessage = statusData.attendance.message;
-				isEvalOpen = statusData.evaluation.isOpen;
-				evalMessage = statusData.evaluation.message;
+				
+				// Apply the lock: Override status if the event is not today
+				if (!isOngoing) {
+					attStatus = 'closed';
+					attMessage = 'This event is not scheduled for today.';
+					isEvalOpen = false;
+					evalMessage = 'This event is not scheduled for today.';
+				} else {
+					attStatus = statusData.attendance.status;
+					attMessage = statusData.attendance.message;
+					isEvalOpen = statusData.evaluation.isOpen;
+					evalMessage = statusData.evaluation.message;
+				}
 			} else {
 				attStatus = 'closed';
 				attMessage = 'System schedule unavailable.';
@@ -128,12 +141,46 @@
 	</header>
 
 	<main class="glass-card animation-pop-up" style="animation-delay: 0.1s;">
-		{#if event}
+		{#if eventState === 'ongoing'}
 			<div class="event-banner">
 				<span class="pulse-badge">Live Event</span>
 				<h1>{event.eventName}</h1>
 				<p class="venue-text">{@render IconMapPin()} {event.venue || 'Main Hall'}</p>
+				{#if event.date}
+					<p class="venue-text" style="margin-top: 0.5rem; font-weight: 500;">
+						{@render IconCalendar()} {new Date(event.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+					</p>
+				{/if}
 			</div>
+
+		{:else if eventState === 'upcoming'}
+			<div class="event-banner">
+				<span class="pulse-badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border-color: rgba(59, 130, 246, 0.3);">
+					Upcoming Event
+				</span>
+				<h1>{event.eventName}</h1>
+				<p class="venue-text">{@render IconMapPin()} {event.venue || 'Main Hall'}</p>
+				{#if event.date}
+					<p class="venue-text" style="margin-top: 0.5rem; font-weight: 500;">
+						{@render IconCalendar()} {new Date(event.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+					</p>
+				{/if}
+			</div>
+
+		{:else if eventState === 'past'}
+			<div class="event-banner">
+				<span class="pulse-badge" style="background: rgba(148, 163, 184, 0.15); color: var(--text-muted); border-color: rgba(148, 163, 184, 0.3);">
+					Last Event
+				</span>
+				<h1>{event.eventName}</h1>
+				<p class="venue-text">{@render IconMapPin()} {event.venue || 'Main Hall'}</p>
+				{#if event.date}
+					<p class="venue-text" style="margin-top: 0.5rem; font-weight: 500;">
+						{@render IconCalendar()} {new Date(event.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+					</p>
+				{/if}
+			</div>
+
 		{:else}
 			<div class="event-banner">
 				<span class="pulse-badge" style="background: rgba(255,255,255,0.1); color: var(--text-muted); border-color: rgba(255,255,255,0.2);">Standby</span>
@@ -293,6 +340,15 @@
 </svg>
 {/snippet}
 
+{#snippet IconCalendar()}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem; vertical-align: middle; margin-right: 0.25rem;">
+	<rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+	<line x1="16" x2="16" y1="2" y2="6"/>
+	<line x1="8" x2="8" y1="2" y2="6"/>
+	<line x1="3" x2="21" y1="10" y2="10"/>
+</svg>
+{/snippet}
+
 <style>
 	@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
@@ -304,7 +360,7 @@
 		--text-muted: #94a3b8;
 		--accent-color: #ffd600; 
 		--accent-green: #10b981;
-		--primary: #8B0021; 
+		--primary: #650000; 
 		--danger: #ef4444;
 		--border-subtle: rgba(148, 163, 184, 0.1);
 	}
