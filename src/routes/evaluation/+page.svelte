@@ -25,7 +25,7 @@
 	let trainingTitle = $state.raw(
 		'Creatives Awareness & Workshop Session for Domain Players'
 	);
-	let venue = $state.raw('CCMS Lab 2, UCN, Daet, Camarines Norte');
+	let venue = $state.raw('CCMS Laboratory, University of Camarines Norte, Daet, Camarines Norte');
 	let date = $state.raw(
 		new Intl.DateTimeFormat('en-CA', { 
 			timeZone: 'Asia/Manila', 
