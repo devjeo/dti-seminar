@@ -8,15 +8,6 @@
 	let currentTime = $state(new Date());
 	let clockInterval: ReturnType<typeof setInterval>;
 
-	// Derive the Manila formatted time
-	const manilaTime = $derived(new Intl.DateTimeFormat('en-US', {
-		timeZone: 'Asia/Manila',
-		hour: 'numeric',
-		minute: '2-digit',
-		second: '2-digit',
-		hour12: true
-	}).format(currentTime));
-
 	const eventState = $derived(data?.eventState || 'none'); // 'ongoing', 'upcoming', 'past', 'none'
 
 	const isOngoing = $derived(eventState === 'ongoing');
@@ -26,6 +17,16 @@
 	let attMessage = $state('Checking schedule...');
 	let isEvalOpen = $state(false);
 	let evalMessage = $state('Checking schedule...');
+	const regStatus = $derived(eventState === 'ongoing' ? 'open' : 'closed');
+	const regMessage = $derived(
+		eventState === 'upcoming'
+			? 'Registration opens on the day of the event.'
+			: eventState === 'past'
+				? 'This event has already ended.'
+				: 'No event is currently scheduled.'
+	);
+
+
 
 	// Tracking the registered and checked-in user on this device
 	let localGuestId = $state('');
@@ -68,7 +69,7 @@
 		e.preventDefault();
 		if (localGuestId) {
 			openDeleteModal(); // Replaced showDeleteModal = true
-		} else if (attStatus === 'open') {
+		} else if (regStatus === 'open') {
 			goto('/register');
 		}
 	}
@@ -230,21 +231,20 @@
 		<div class="action-grid">
 			
 			<a 
-				href={localGuestId ? "#" : (attStatus === 'open' ? "/register" : "#")} 
+				href={localGuestId ? "#" : (regStatus === 'open' ? "/register" : "#")} 
 				class="action-card"
-				class:primary-action={!localGuestId && attStatus === 'open'}
+				class:primary-action={!localGuestId && regStatus === 'open'}
 				class:completed-action={!!localGuestId}
-				class:locked={!localGuestId && attStatus !== 'open'}
+				class:locked={!localGuestId && regStatus !== 'open'}
 				onclick={(e) => { 
 					if (localGuestId) { e.preventDefault(); showDeleteModal = true; } 
-					else if (attStatus !== 'open') { e.preventDefault(); }
+					else if (regStatus !== 'open') { e.preventDefault(); }
 				}}
 			>
 				<div class="step-indicator">Step 1</div>
 				<div class="icon">
 					{#if localGuestId} {@render IconCheckCircle()}
-					{:else if attStatus === 'open'} {@render IconUserPlus()}
-					{:else if attStatus === 'not_started'} {@render IconClock()}
+					{:else if regStatus === 'open'} {@render IconUserPlus()}
 					{:else} {@render IconLock()}
 					{/if}
 				</div>
@@ -254,14 +254,11 @@
 				{#if localGuestId}
 					<p>Profile saved on this device. Click here to reset or delete.</p>
 					<span class="cta-text text-green">Registered &check;</span>
-				{:else if attStatus === 'open'}
+				{:else if regStatus === 'open'}
 					<p>New guest? Create your profile and log your arrival.</p>
 					<span class="cta-text text-accent">Register Now &rarr;</span>
-				{:else if attStatus === 'not_started'}
-					<p>{attMessage}</p>
-					<span class="cta-text text-muted">Not Yet Open</span>
 				{:else}
-					<p>{attMessage}</p>
+					<p>{regMessage}</p>
 					<span class="cta-text text-muted">Currently Closed</span>
 				{/if}
 			</a>
@@ -334,12 +331,6 @@
 			</a>
 		</div>
 	</main>
-
-	<footer class="app-footer animation-fade-in" style="animation-delay: 0.2s;">
-        <div class="clock-container">
-            <span><strong>{manilaTime}</strong></span>
-        </div>
-    </footer>
 </div>
 
 {#snippet IconCheckCircle()}
