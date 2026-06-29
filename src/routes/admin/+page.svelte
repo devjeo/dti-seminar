@@ -332,7 +332,7 @@
 
 	function formatTime(dateStr: string) {
 		if (!dateStr) return '';
-		return new Date(dateStr).toLocaleString();
+		return new Date(dateStr).toLocaleString(); 
 	}
 
 	function downloadDoc(key: keyof typeof DOC_DEFAULTS) {
@@ -430,7 +430,7 @@
 					`"${r.participantName || ''}"`,
 					`"${r.trainingTitle || ''}"`,
 					`"${r.venue || ''}"`,
-					`"${formatTime(r.date || r.submittedAt || r.createdAt)}"`
+					`"${formatTime(r.submittedAt || r.createdAt)}"`
 				];
 
 				// Add General Scores

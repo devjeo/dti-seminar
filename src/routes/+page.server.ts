@@ -23,7 +23,6 @@ export const load: PageServerLoad = async () => {
         // 2. Helper to get YYYY-MM-DD strictly in Manila time
         const getManilaDateString = (dateObj) => {
             return new Intl.DateTimeFormat('en-CA', {
-                timeZone: 'Asia/Manila',
                 year: 'numeric',
                 month: '2-digit',
                 day: '2-digit'
