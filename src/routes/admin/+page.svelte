@@ -332,7 +332,7 @@
 
 	function formatTime(dateStr: string) {
 		if (!dateStr) return '';
-		return new Date(dateStr).toLocaleString(); 
+		return new Date(dateStr).toLocaleString('en-PH', { timeZone: 'Asia/Manila' });
 	}
 
 	function downloadDoc(key: keyof typeof DOC_DEFAULTS) {
