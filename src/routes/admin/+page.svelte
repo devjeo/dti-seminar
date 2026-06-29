@@ -80,7 +80,7 @@
 		{ key: 'qos_obj', label: '2. Quality of Service: Achievement of the training objectives' },
 		{ key: 'qos_use', label: '2. Quality of Service: Usefulness of the training to your needs/work' },
 		{ key: 'qos_con', label: '2. Quality of Service: Contribution of the training to community development' },
-		{ key: 'qos_cap', label: '2. Quality of Service: Capability of CNSC in conducting the training' },
+		{ key: 'qos_cap', label: '2. Quality of Service: Capability of UCN in conducting the training' },
 		{ key: 'tim_rel', label: '3. Timeliness of Service: Timeliness and relevance to improving current job/operations' },
 		{ key: 'tim_len', label: '3. Timeliness of Service: Length of the presentation was sufficient' },
 		{ key: 'op_ven', label: '4. Other Particulars: Venue and related facilities' },
@@ -89,12 +89,12 @@
 		{ key: 'op_spe', label: '4. Other Particulars: Event/program speakers/facilitators' },
 		{ key: 'op_act', label: '4. Other Particulars: Activities at the event' },
 		{ key: 'op_obj', label: '4. Other Particulars: Achievement of the Objective/s' },
-		{ key: 'op_cap', label: '4. Other Particulars: Capability of CNSC to operationalize the activity' },
+		{ key: 'op_cap', label: '4. Other Particulars: Capability of UCN to operationalize the activity' },
 		{ key: 'op_ovr', label: '5. OVERALL QUALITY: Overall Quality of the Service Provided' }
 	];
 
 	const DOC_DEFAULTS = {
-		f25: `CLIENT SATISFACTION SURVEY (EXTENSION)\n\nParticipant/Beneficiary\nTitle of the training:\nVenue:\nDate:\n\nRating guide:\n[5] Excellent [4] Very good [3] Good [2] Fair [1] Poor\n\nPART I. EVALUATION OF THE CONDUCT OF THE TRAINING\n- Resource Speaker 1 items\n- Resource Speaker 2 items\n- Quality of Service\n- Timeliness of Service\n\nPART II. OTHER PARTICULARS\n- Venue and related facilities\n- Tools and Equipment\n- Refreshments/food\n- Event/program speakers/facilitators\n- Activities at the event\n- Achievement of the Objective/s\n- Capability of CNSC to operationalize the activity\n- Overall Quality of the Service Provided\n\nOpen-ended questions:\n1) What was the most interesting thing you learned?\n2) What would have made the session more effective?\n3) Additional suggestions/comments/inquiries?\n\nSignature over Printed Name of Participant`,
+		f25: `CLIENT SATISFACTION SURVEY (EXTENSION)\n\nParticipant/Beneficiary\nTitle of the training:\nVenue:\nDate:\n\nRating guide:\n[5] Excellent [4] Very good [3] Good [2] Fair [1] Poor\n\nPART I. EVALUATION OF THE CONDUCT OF THE TRAINING\n- Resource Speaker 1 items\n- Resource Speaker 2 items\n- Quality of Service\n- Timeliness of Service\n\nPART II. OTHER PARTICULARS\n- Venue and related facilities\n- Tools and Equipment\n- Refreshments/food\n- Event/program speakers/facilitators\n- Activities at the event\n- Achievement of the Objective/s\n- Capability of UCN to operationalize the activity\n- Overall Quality of the Service Provided\n\nOpen-ended questions:\n1) What was the most interesting thing you learned?\n2) What would have made the session more effective?\n3) Additional suggestions/comments/inquiries?\n\nSignature over Printed Name of Participant`,
 		f26: `ATTENDANCE SHEET (EXTERNAL) – F26\n\nNotes / editable copy:\n- You can paste the official column headers here\n- Or write instructions for encoding attendance\n\nTip: Use Admin → Attendance tab to export the attendance list as CSV.`,
 		f9: `NARRATIVE REPORT – F9\n\nPART 1: EXECUTIVE SUMMARY\nTitle of Extension Project:\nTitle of Extension Activity:\nDate Conducted:\nImplementing College/Delivery Unit:\nPriority Thrust implemented:\nBeneficiaries/Stakeholders/Sector:\nTotal Number of Persons Trained:\nPurpose of the conduct:\nTraining Methodology:\nEligibility (linkage/adoption/etc.):\n\nPART 2: SIGNIFICANT CONTRIBUTION\n\nPART 3: SUMMARY CLIENT SATISFACTION SURVEY\n\nPART 4: SUMMARY OF FEEDBACK\n\nPrepared by:\nCertified by:`,
 		proposal: `EXTENSION PROJECT PROPOSAL – Rev. 2\n\nI. PROJECT DESCRIPTION\nProject Title:\nType of Project:\nProponent/s:\nBeneficiaries:\nLocation:\nDuration:\nBudget Requirement:\n\nII. RATIONALE\n\nIII. PROJECT ORGANIZATION/STAFFING\n\nIV. LOGICAL FRAMEWORK\n\nV. GANTT CHART\n\nVI. DETAILED BUDGET\n\nVII. MONITORING & EVALUATION\n\nVIII. OTHER INFORMATION\n\nIX. ATTACHMENTS`

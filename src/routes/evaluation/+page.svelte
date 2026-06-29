@@ -102,8 +102,8 @@
 		},
 		{
 			key: 'qos_cap',
-			label: 'Capability of CNSC in conducting the training',
-			sub: 'Kakayahan ng CNSC sa pagsasagawa ng pagsasanay'
+			label: 'Capability of UCN in conducting the training',
+			sub: 'Kakayahan ng UCN sa pagsasagawa ng pagsasanay'
 		},
 		{
 			key: 'tim_rel',
@@ -134,8 +134,8 @@
 		{ key: 'op_obj', label: 'Achievement of the Objective/s', sub: 'Pagkamit ng layunin' },
 		{
 			key: 'op_cap',
-			label: 'Capability of CNSC to operationalize the activity',
-			sub: 'Kakayahan ng CNSC na maisakatuparan ang aktibidad'
+			label: 'Capability of UCN to operationalize the activity',
+			sub: 'Kakayahan ng UCN na maisakatuparan ang aktibidad'
 		},
 		{
 			key: 'op_ovr',
