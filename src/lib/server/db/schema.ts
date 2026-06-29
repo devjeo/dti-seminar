@@ -32,7 +32,7 @@ export const evaluation = mysqlTable('evaluation', {
 	participantName: varchar('participant_name', { length: 255 }),
 	trainingTitle: varchar('training_title', { length: 255 }),
 	venue: varchar('venue', { length: 255 }),
-	date: timestamp('date'), // keeping as string for simplicity or validation
+	submittedAt: timestamp('submitted_at'),
 
 	// Ratings (Stored as JSON for flexibility, or we could map every single question)
 	// Example: {"rs1_obj": "5", "rs1_rel": "4", ...}

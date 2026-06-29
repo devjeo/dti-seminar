@@ -432,9 +432,9 @@
 					`"${r.participantName || ''}"`,
 					`"${r.trainingTitle || ''}"`,
 					`"${r.venue || ''}"`,
-					`"${formatTime(r.date || r.createdAt)}"`
+					`"${formatTime(r.submittedAt || r.createdAt)}"`
 				];
-				console.log(r.date);
+				console.log(r.submittedAt);
 				console.log(r.createdAt);
 
 				// Add General Scores
@@ -1031,7 +1031,7 @@
 												</td>
 												<td>{r.participantName || '—'}</td>
 												<td>{r.trainingTitle || '—'}</td>
-												<td>{formatTime(r.date || r.createdAt)}</td>
+												<td>{formatTime(r.submittedAt || r.createdAt)}</td>
 												<td>
 													<button
 														class="btn-sm btn-danger"

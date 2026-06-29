@@ -310,13 +310,11 @@
 				participantName,
 				trainingTitle,
 				venue,
-				date,
 				speakerEvaluations,
 				generalRatings: ratings,
 				q1,
 				q2,
 				q3,
-				date: new Date().toISOString()
 			};
 
 			const res = await fetch('/api/evaluations', {
