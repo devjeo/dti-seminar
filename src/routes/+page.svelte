@@ -88,11 +88,11 @@
 					evalMessage = statusData.evaluation.message;
 				}
 			} else {
-				attStatus = 'open';
+				attStatus = 'closed';
 				attMessage = 'System schedule unavailable.';
 			}
 		} catch (error) {
-			attStatus = 'open';
+			attStatus = 'closed';
 			attMessage = 'Network error checking schedule.';
 		}
 	});
