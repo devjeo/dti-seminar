@@ -395,7 +395,7 @@
 		} else if (type === 'evaluations') {
 			// 1. Set a maximum number of speakers to export columns for. 
 			// (3 is usually safe, but you can increase it if needed)
-			const maxSpeakersToExport = 3; 
+			const maxSpeakersToExport = 2; 
 
 			// 2. Build the flattened headers
 			let headers = [
