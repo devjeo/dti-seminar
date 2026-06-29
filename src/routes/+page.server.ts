@@ -8,7 +8,7 @@ export const load: PageServerLoad = async () => {
         id: 'fallback-1',
         eventName: "Creatives Awareness & Workshop Session for Domain Players",
         venue: "CCMS Laboratory, University of Camarines Norte, Daet, Camarines Norte",
-        date: "2026-06-30" 
+        date: "2026-06-29" 
     };
 
     try {
