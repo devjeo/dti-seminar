@@ -8,7 +8,7 @@ export const load: PageServerLoad = async () => {
         id: 'fallback-1',
         eventName: "Creatives Awareness & Workshop Session for Domain Players",
         venue: "CCMS Laboratory, University of Camarines Norte, Daet, Camarines Norte",
-        date: "2026-06-29" 
+        date: "2026-06-30"
     };
 
     try {
@@ -17,12 +17,20 @@ export const load: PageServerLoad = async () => {
         // 1. If the database is empty, inject the fallback
         if (fetchedEvents.length === 0) {
             console.warn('⚠️ WARNING: No events in database. Using hardcoded fallback event.');
-            fetchedEvents = [fallbackEvent as any]; // Cast as 'any' if schema types complain
+            fetchedEvents = [fallbackEvent as any];
         }
 
-        // 2. Get current date normalized to midnight
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        // 2. Helper to get YYYY-MM-DD strictly in Manila time
+        const getManilaDateString = (dateObj) => {
+            return new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'Asia/Manila',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            }).format(dateObj);
+        };
+
+        const todayStr = getManilaDateString(new Date());
 
         let ongoingEvent = null;
         let upcomingEvent = null;
@@ -30,23 +38,25 @@ export const load: PageServerLoad = async () => {
 
         // 3. Sort events chronologically (oldest to newest)
         const sortedEvents = fetchedEvents.sort((a, b) => {
-            return new Date(a.date).getTime() - new Date(b.date).getTime();
+            // FIXED: Changed from a.date to a.eventDate to match schema
+            return new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime();
         });
 
         // 4. Categorize the events
         for (const ev of sortedEvents) {
-            if (!ev.date) continue;
-            const evDate = new Date(ev.date);
-            evDate.setHours(0, 0, 0, 0);
+            // FIXED: Changed from ev.date to ev.eventDate
+            if (!ev.eventDate) continue;
 
-            const timeDiff = evDate.getTime() - today.getTime();
+            // Format the event date to a Manila YYYY-MM-DD string
+            const evStr = getManilaDateString(new Date(ev.eventDate));
 
-            if (timeDiff === 0) {
+            // Safely compare the strings
+            if (evStr === todayStr) {
                 ongoingEvent = ev;
-            } else if (timeDiff > 0) {
-                if (!upcomingEvent) upcomingEvent = ev; 
+            } else if (evStr > todayStr) {
+                if (!upcomingEvent) upcomingEvent = ev;
             } else {
-                pastEvent = ev; 
+                pastEvent = ev;
             }
         }
 
@@ -61,18 +71,17 @@ export const load: PageServerLoad = async () => {
 
         // Fallback if dates somehow fail entirely
         return { event: null, eventState: 'none' };
-
     } catch (error) {
         console.error('Database connection failed:', error);
-        
+
         // 6. If the database totally crashes, STILL serve the fallback event!
         console.warn('⚠️ Serving fallback event due to database error.');
-        
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const fallbackDate = new Date(fallbackEvent.date);
         fallbackDate.setHours(0, 0, 0, 0);
-        
+
         const timeDiff = fallbackDate.getTime() - today.getTime();
         let state = 'past';
         if (timeDiff === 0) state = 'ongoing';

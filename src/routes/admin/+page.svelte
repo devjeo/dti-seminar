@@ -2,6 +2,30 @@
 	import { onMount } from 'svelte';
 	import './admin.css';
 
+	let eventsData: any[] = $state([]);
+	let isAddingEvent = $state(false);
+	let eventForm = $state({
+		eventName: '',
+		eventDate: '',
+		venue: '',
+		description: ''
+	});
+	let eventFormMessage = $state('');
+	let editingEventId: number | null = $state(null);
+
+	function triggerEditEvent(ev: any) {
+		isAddingEvent = true;
+		editingEventId = ev.id;
+		eventFormMessage = '';
+		// Pre-fill the form with the selected event's data
+		eventForm = {
+			eventName: ev.eventName || '',
+			eventDate: ev.eventDate || '',
+			venue: ev.venue || '',
+			description: ev.description || ''
+		};
+	}
+
 	import * as XLSX from 'xlsx'; // New import for Excel
 
 	// --- Import Modal States ---
@@ -217,16 +241,18 @@
 
 	async function loadData() {
 		try {
-			const [attRes, evalRes, setRes, guestRes] = await Promise.all([
+			const [attRes, evalRes, setRes, guestRes, eventRes] = await Promise.all([
 				fetch('/api/attendance'),
 				fetch('/api/evaluations'),
 				fetch('/api/settings'),
-				fetch('/api/guests?all=true')
+				fetch('/api/guests?all=true'),
+				fetch('/api/events') // NEW API CALL
 			]);
 
 			if (attRes.ok) attendanceData = await attRes.json();
 			if (setRes.ok) settingsData = await setRes.json();
 			if (guestRes.ok) guestData = await guestRes.json();
+			if (eventRes.ok) eventsData = await eventRes.json();
 			if (evalRes.ok) {
 				const raw = await evalRes.json();
 				evaluationData = raw.map((r: any) => {
@@ -710,6 +736,12 @@
 						Guest List
 					</button>
 					<button
+						class="admin-tab {activeTab === 'events' ? 'active' : ''}"
+						onclick={() => (activeTab = 'events')}
+					>
+						Events
+					</button>
+					<button
 						class="admin-tab {activeTab === 'evaluations' ? 'active' : ''}"
 						onclick={() => (activeTab = 'evaluations')}
 					>
@@ -1009,6 +1041,143 @@
 								</tbody>
 							</table>
 						</div>
+					</section>
+				{/if}
+
+				{#if activeTab === 'events'}
+					<section class="admin-tab-content active">
+						<div class="admin-section-header">
+							<h2>Manage Events</h2>
+							<div class="admin-actions">
+								{#if !isAddingEvent}
+									<button class="btn-primary" onclick={() => {
+										isAddingEvent = true;
+										editingEventId = null;
+										eventForm = { eventName: '', eventDate: '', venue: '', description: '' };
+									}}>
+										Add New Event
+									</button>
+								{:else}
+									<button class="btn-secondary" onclick={() => {
+										isAddingEvent = false;
+										editingEventId = null;
+									}}>
+										Cancel
+									</button>
+								{/if}
+							</div>
+						</div>
+
+						{#if isAddingEvent}
+							<div class="admin-card">
+								<h3>{editingEventId ? 'Edit Event' : 'Create New Event'}</h3>
+								<form class="form" onsubmit={async (e) => {
+									e.preventDefault();
+									eventFormMessage = 'Saving...';
+									
+									const method = editingEventId ? 'PUT' : 'POST';
+									const payload = editingEventId ? { ...eventForm, id: editingEventId } : eventForm;
+
+									try {
+										const res = await fetch('/api/events', {
+											method,
+											headers: { 'Content-Type': 'application/json' },
+											body: JSON.stringify(payload)
+										});
+										
+										if (res.ok) {
+											await loadData(); // Refresh the list
+											isAddingEvent = false;
+											editingEventId = null;
+											eventForm = { eventName: '', eventDate: '', venue: '', description: '' };
+										} else {
+											const err = await res.json();
+											eventFormMessage = err.message || 'Failed to save event.';
+										}
+									} catch (err) {
+										eventFormMessage = 'Network error.';
+									}
+								}}>
+									<div class="field">
+										<label>Event Name *</label>
+										<input bind:value={eventForm.eventName} required />
+									</div>
+									
+									<div class="grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+										<div class="field">
+											<label>Event Date & Time</label>
+											<div class="datetime-wrapper">
+												<input 
+													type="datetime-local" 
+													class="clickable-datetime" 
+													bind:value={eventForm.eventDate} 
+													required 
+												/>
+											</div>
+										</div>
+										<div class="field">
+											<label>Venue</label>
+											<input bind:value={eventForm.venue} />
+										</div>
+									</div>
+
+									<div class="field">
+										<label>Description</label>
+										<textarea bind:value={eventForm.description} rows="3"></textarea>
+									</div>
+
+									{#if eventFormMessage}
+										<p class="message text-danger">{eventFormMessage}</p>
+									{/if}
+
+									<button type="submit" class="btn-primary" style="margin-top: 1rem;">
+										{editingEventId ? 'Update Event' : 'Save Event'}
+									</button>
+								</form>
+							</div>
+						{:else}
+							<div class="table-wrapper">
+								<table class="data-table">
+									<thead>
+										<tr>
+											<th>#</th>
+											<th>Event Name</th>
+											<th>Date</th>
+											<th>Venue</th>
+											<th>Action</th>
+										</tr>
+									</thead>
+									<tbody>
+										{#if eventsData.length === 0}
+											<tr class="admin-empty"><td colspan="5">No events found.</td></tr>
+										{:else}
+											{#each eventsData as ev, i}
+												<tr>
+													<td>{i + 1}</td>
+													<td><strong>{ev.eventName}</strong></td>
+													<td>{ev.eventDate ? new Date(ev.eventDate).toLocaleString() : 'TBA'}</td>
+													<td>{ev.venue || 'TBA'}</td>
+													<td>
+														<div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+															<button
+																class="btn-sm btn-secondary"
+																onclick={() => triggerEditEvent(ev)}
+																title="Edit Event">Edit
+															</button>
+															<button
+																class="btn-sm btn-danger"
+																onclick={() => deleteRecord('events', ev.id)}
+																title="Delete Event">Delete
+															</button>
+														</div>
+													</td>
+												</tr>
+											{/each}
+										{/if}
+									</tbody>
+								</table>
+							</div>
+						{/if}
 					</section>
 				{/if}
 

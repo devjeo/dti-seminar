@@ -166,9 +166,9 @@
 				<span class="pulse-badge">Live Event</span>
 				<h1>{event.eventName}</h1>
 				<p class="venue-text">{@render IconMapPin()} {event.venue || 'Main Hall'}</p>
-				{#if event.date}
+				{#if event.eventDate}
 					<p class="venue-text" style="margin-top: 0.5rem; font-weight: 500;">
-						{@render IconCalendar()} {new Date(event.date).toLocaleDateString('en-US', { 
+						{@render IconCalendar()} {new Date(event.eventDate).toLocaleDateString('en-US', { 
 							weekday: 'long', 
 							year: 'numeric', 
 							month: 'long', 
@@ -186,9 +186,9 @@
 				</span>
 				<h1>{event.eventName}</h1>
 				<p class="venue-text">{@render IconMapPin()} {event.venue || 'Main Hall'}</p>
-				{#if event.date}
+				{#if event.eventDate}
 					<p class="venue-text" style="margin-top: 0.5rem; font-weight: 500;">
-						{@render IconCalendar()} {new Date(event.date).toLocaleDateString('en-US', { 
+						{@render IconCalendar()} {new Date(event.eventDate).toLocaleDateString('en-US', { 
 							weekday: 'long', 
 							year: 'numeric', 
 							month: 'long', 
@@ -206,9 +206,9 @@
 				</span>
 				<h1>{event.eventName}</h1>
 				<p class="venue-text">{@render IconMapPin()} {event.venue || 'Main Hall'}</p>
-				{#if event.date}
+				{#if event.eventDate}
 					<p class="venue-text" style="margin-top: 0.5rem; font-weight: 500;">
-						{@render IconCalendar()} {new Date(event.date).toLocaleDateString('en-US', { 
+						{@render IconCalendar()} {new Date(event.eventDate).toLocaleDateString('en-US', { 
 							weekday: 'long', 
 							year: 'numeric', 
 							month: 'long', 
