@@ -1,8 +1,21 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	
 	let { data } = $props();
 	const event = $derived(data?.event || null);
+
+	// --- NEW CLOCK STATE ---
+	let currentTime = $state(new Date());
+	let clockInterval: ReturnType<typeof setInterval>;
+
+	// Derive the Manila formatted time
+	const manilaTime = $derived(new Intl.DateTimeFormat('en-US', {
+		timeZone: 'Asia/Manila',
+		hour: 'numeric',
+		minute: '2-digit',
+		second: '2-digit',
+		hour12: true
+	}).format(currentTime));
 
 	const eventState = $derived(data?.eventState || 'none'); // 'ongoing', 'upcoming', 'past', 'none'
 
@@ -95,6 +108,13 @@
 			attStatus = 'closed';
 			attMessage = 'Network error checking schedule.';
 		}
+
+		clockInterval = setInterval(() => {
+			currentTime = new Date();
+		}, 1000);
+	});
+	onDestroy(() => {
+		if (clockInterval) clearInterval(clockInterval);
 	});
 </script>
 
@@ -148,7 +168,13 @@
 				<p class="venue-text">{@render IconMapPin()} {event.venue || 'Main Hall'}</p>
 				{#if event.date}
 					<p class="venue-text" style="margin-top: 0.5rem; font-weight: 500;">
-						{@render IconCalendar()} {new Date(event.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+						{@render IconCalendar()} {new Date(event.date).toLocaleDateString('en-US', { 
+							weekday: 'long', 
+							year: 'numeric', 
+							month: 'long', 
+							day: 'numeric',
+							timeZone: 'Asia/Manila' 
+						})}
 					</p>
 				{/if}
 			</div>
@@ -162,7 +188,13 @@
 				<p class="venue-text">{@render IconMapPin()} {event.venue || 'Main Hall'}</p>
 				{#if event.date}
 					<p class="venue-text" style="margin-top: 0.5rem; font-weight: 500;">
-						{@render IconCalendar()} {new Date(event.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+						{@render IconCalendar()} {new Date(event.date).toLocaleDateString('en-US', { 
+							weekday: 'long', 
+							year: 'numeric', 
+							month: 'long', 
+							day: 'numeric',
+							timeZone: 'Asia/Manila' 
+						})}
 					</p>
 				{/if}
 			</div>
@@ -176,7 +208,13 @@
 				<p class="venue-text">{@render IconMapPin()} {event.venue || 'Main Hall'}</p>
 				{#if event.date}
 					<p class="venue-text" style="margin-top: 0.5rem; font-weight: 500;">
-						{@render IconCalendar()} {new Date(event.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+						{@render IconCalendar()} {new Date(event.date).toLocaleDateString('en-US', { 
+							weekday: 'long', 
+							year: 'numeric', 
+							month: 'long', 
+							day: 'numeric',
+							timeZone: 'Asia/Manila' 
+						})}
 					</p>
 				{/if}
 			</div>
@@ -296,6 +334,12 @@
 			</a>
 		</div>
 	</main>
+
+	<footer class="app-footer animation-fade-in" style="animation-delay: 0.2s;">
+        <div class="clock-container">
+            <span><strong>{manilaTime}</strong></span>
+        </div>
+    </footer>
 </div>
 
 {#snippet IconCheckCircle()}
@@ -713,4 +757,37 @@
 		width: 48px; 
 		height: 48px;
 	}
+
+	/* --- CLOCK FOOTER STYLES --- */
+.app-footer {
+    margin-top: 2rem;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.clock-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(11, 16, 32, 0.6);
+    border: 1px solid var(--border-subtle);
+    padding: 0.75rem 1.5rem;
+    border-radius: 50px;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+.clock-icon svg {
+    width: 18px;
+    height: 18px;
+    color: var(--accent-color);
+}
+
+.clock-container strong {
+    color: var(--text-main);
+    font-weight: 700;
+    letter-spacing: 1px;
+}
 </style>

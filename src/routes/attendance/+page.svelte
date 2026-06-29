@@ -140,7 +140,7 @@
 </main>
 
 <footer class="footer">
-	<small>&copy; {new Date().getFullYear()} DTI. All rights reserved.</small>
+	<small>&copy; {new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', year: 'numeric' }).format(new Date())} DTI. All rights reserved.</small>
 </footer>
 
 <style>

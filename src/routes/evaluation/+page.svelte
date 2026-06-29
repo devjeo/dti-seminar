@@ -26,7 +26,14 @@
 		'Creatives Awareness & Workshop Session for Domain Players'
 	);
 	let venue = $state.raw('CCMS Lab 2, UCN, Daet, Camarines Norte');
-	let date = $state.raw(new Date().toISOString().split('T')[0]);
+	let date = $state.raw(
+		new Intl.DateTimeFormat('en-CA', { 
+			timeZone: 'Asia/Manila', 
+			year: 'numeric', 
+			month: '2-digit', 
+			day: '2-digit' 
+		}).format(new Date())
+	);
 	let ratings: Record<string, string> = $state({});
 	let q1 = $state.raw('');
 	let q2 = $state.raw('');
@@ -712,7 +719,7 @@
 </main>
 
 <footer class="footer">
-	<small>&copy; {new Date().getFullYear()} DTI. All rights reserved.</small>
+	<small>&copy; {new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', year: 'numeric' }).format(new Date())} DTI. All rights reserved.</small>
 </footer>
 
 <style>
