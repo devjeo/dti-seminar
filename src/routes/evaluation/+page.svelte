@@ -316,7 +316,7 @@
 				q1,
 				q2,
 				q3,
-				submittedAt: new Date().toISOString()
+				date: new Date().toISOString()
 			};
 
 			const res = await fetch('/api/evaluations', {

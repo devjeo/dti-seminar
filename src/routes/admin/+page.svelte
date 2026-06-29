@@ -378,16 +378,18 @@
 				'Employment',
 				'Classifications'
 			];
-			const rows = filteredAttendance.map((r) => [
-				`"${r.guestId || ''}"`,
-				`"${r.firstName || ''} ${r.lastName || ''}"`,
-				`"${formatTime(r.timeIn || r.createdAt)}"`,
-				`"${r.company || ''}"`,
-				`"${r.sex || ''}"`,
-				`"${r.age || ''}"`,
-				`"${r.employmentStatus || ''}"`,
-				`"${Array.isArray(r.socialClassification) ? r.socialClassification.join('; ') : r.socialClassification || ''}"`
-			]);
+			const rows = filteredAttendance.map((r) => {
+				return [
+					`"${r.guestId || ''}"`,
+					`"${r.firstName || ''} ${r.lastName || ''}"`,
+					`"${formatTime(r.timeIn || r.createdAt)}"`,
+					`"${r.company || ''}"`,
+					`"${r.sex || ''}"`,
+					`"${r.age || ''}"`,
+					`"${r.employmentStatus || ''}"`,
+					`"${Array.isArray(r.socialClassification) ? r.socialClassification.join('; ') : r.socialClassification || ''}"`
+				]
+			});
 			csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
 			filename = `attendance-${Date.now()}.csv`;
 		} else if (type === 'evaluations') {
@@ -430,8 +432,10 @@
 					`"${r.participantName || ''}"`,
 					`"${r.trainingTitle || ''}"`,
 					`"${r.venue || ''}"`,
-					`"${formatTime(r.submittedAt || r.createdAt)}"`
+					`"${formatTime(r.date || r.createdAt)}"`
 				];
+				console.log(r.date);
+				console.log(r.createdAt);
 
 				// Add General Scores
 				GENERAL_CRITERIA.forEach(c => {
@@ -1027,7 +1031,7 @@
 												</td>
 												<td>{r.participantName || '—'}</td>
 												<td>{r.trainingTitle || '—'}</td>
-												<td>{formatTime(r.submittedAt || r.createdAt)}</td>
+												<td>{formatTime(r.date || r.createdAt)}</td>
 												<td>
 													<button
 														class="btn-sm btn-danger"

@@ -79,7 +79,7 @@ export const POST = async ({ request }: RequestEvent): Promise<Response> => {
 			participantName: participantName || null,
 			trainingTitle: trainingTitle || null,
 			venue: venue || null,
-			date: date || null,
+			date: new Date(),
 			// We pass null to the old columns to eventually phase them out
 			resourceSpeaker1: null, 
 			resourceSpeaker2: null,
@@ -87,7 +87,7 @@ export const POST = async ({ request }: RequestEvent): Promise<Response> => {
 			q1: q1 || null,
 			q2: q2 || null,
 			q3: q3 || null,
-			signatureName: signatureName || null
+			signatureName: signatureName || null,
 		});
 
 		return json({ success: true });
